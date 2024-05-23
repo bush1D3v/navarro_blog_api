@@ -30,11 +30,11 @@ O projeto segue os princípios da **arquitetura limpa**, e o código foi organiz
 
 ## 🐳 Docker
 
-Com a adição do Docker, você agora pode utilizar dos scripts fornecidos em `package.json` para poder construir a imagem docker e rodar o container da aplicação.
+Com a adição do Docker, você agora pode utilizar dos scripts fornecidos em `Makefile` para poder construir a imagem docker e rodar o container da aplicação.
 
 Para isso, segue a lista de funções de cada script:
 
-> `docker-build`: Constrói a imagem docker do projeto <br> `docker-start`: Sobe e roda/só roda o container navarro_blog_api <br> `docker-stop`: Para o container navarro_blog_api
+> `docker-build`: Constrói as imagens docker do projeto <br> `docker-run`: Sobe e roda os containers de navarro_blog_api <br> `docker-stop`: Para os containers de navarro_blog_api <br> `docker-clean`: Remove as imagens docker do projeto
 
 # 🖋️ Contribuindo para o Blog
 
@@ -59,22 +59,6 @@ cd navarro_blog_api
 
 Certifique-se de ter Node.js instalado no seu sistema. Em seguida, instale as dependências necessárias:
 
-```
-npm install
-```
-
-ou
-
-```
-yarn install
-```
-
-ou
-
-```
-pnpm install
-```
-
 ### 🆕 Criando uma Branch
 
 Antes de iniciar qualquer trabalho, crie uma branch separada para a sua contribuição. Use um nome descritivo para a sua branch:
@@ -90,22 +74,6 @@ Faça as alterações necessárias no código, adicione novos recursos ou corre�
 ### 🧪 Testando
 
 Garanta que suas alterações não quebraram nenhum recurso existente. Execute os testes e certifique-se de que todos passam:
-
-```
-npm run test
-```
-
-ou
-
-```
-yarn test
-```
-
-ou
-
-```
-pnpm test
-```
 
 ### 📝 Documentando
 
