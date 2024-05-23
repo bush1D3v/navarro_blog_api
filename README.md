@@ -85,7 +85,7 @@ Após concluir suas alterações e testá-las, faça um commit das alterações:
 
 ```
 git add .
-git commit -m <tipo de alteração>(nomeDoArquivo): Nova funcionalidade
+git commit -m <tipo de alteração>: Nova funcionalidade
 ```
 
 Em seguida, envie suas alterações para o repositório:
