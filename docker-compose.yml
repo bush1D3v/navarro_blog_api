@@ -1,4 +1,4 @@
-version: '3.5'
+version: '3.2'
 
 services:
   api01: &api
@@ -44,8 +44,8 @@ services:
     image: postgres
     hostname: db
     environment:
-      POSTGRES_USER: root
-      POSTGRES_PASSWORD: 1234
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 220305
       POSTGRES_DB: blogdb
     volumes:
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -57,9 +57,19 @@ services:
       interval: 5s
       timeout: 5s
       retries: 20
-      start_period: 10s
     deploy:
       resources:
         limits:
           cpus: '0.9'
           memory: '1.4GB'
+
+  redis:
+    image: redis
+    hostname: redis
+    network_mode: host
+    command: redis-server --save "" --appendonly no --maxclients 20000
+    deploy:
+      resources:
+        limits:
+          cpus: '0.15'
+          memory: '0.3GB'
