@@ -77,7 +77,7 @@ Garanta que suas alterações não quebraram nenhum recurso existente. Execute o
 
 ### 📝 Documentando
 
-Mantenha a documentação atualizada. Se você adicionou novos recursos, verifique se eles estão devidamente documentados no README.
+Mantenha a documentação atualizada. Se você adicionou novos recursos, verifique se eles estão devidamente documentados no Swagger.
 
 ### 📊 Compromissos e Push
 
