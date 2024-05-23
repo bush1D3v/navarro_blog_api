@@ -6,3 +6,15 @@ image:
 
 push-image:
 	docker push bush1d3v/navarro_blog_api
+
+docker-build:
+	docker-compose build
+
+docker-run:
+	docker-compose up -d
+
+docker-stop:
+	docker-compose stop
+
+docker-clean:
+	docker-compose down --rmi all --volumes
