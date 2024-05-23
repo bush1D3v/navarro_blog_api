@@ -1,0 +1,10 @@
+.github
+.vscode
+target
+test
+.dockerignore
+.gitignore
+.git
+Dockerfile
+LICENSE
+readme.MD
