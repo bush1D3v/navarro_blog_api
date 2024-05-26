@@ -1,0 +1,43 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Navarro Blog API Documentation",
+    "description": "Welcome to the Navarro Blog API Documentation! Here, you will find comprehensive information about the API's endpoints and how to utilize them. Explore the available routes and test their functionality. Don't forget to register and complete the authorization process to unlock the full potential of the API.",
+    "contact": {
+      "email": "victor.jose.lopes.navarro@gmail.com"
+    },
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://hub.docker.com/repository/docker/bush1d3v/navarro_blog_api/general",
+      "description": "Docker Image"
+    },
+    {
+      "url": "http://localhost:8080",
+      "description": "Local Server"
+    }
+  ],
+  "paths": {
+    "/world": {
+      "get": {
+        "summary": "Get a Hello World Message",
+        "description": "Route responsible for get a hello world message",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "value": {
+                    "message": "Hello World!"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
