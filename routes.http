@@ -2,5 +2,5 @@ GET http://localhost:8080/world
 Content-Type: application/json
 
 {
-    message: "Hello world!"
+    "message": "Hello world!"
 }
