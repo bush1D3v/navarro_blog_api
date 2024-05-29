@@ -8,3 +8,5 @@ test
 Dockerfile
 LICENSE
 readme.MD
+.env
+.env.example
