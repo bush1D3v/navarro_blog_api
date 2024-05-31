@@ -1,5 +1,6 @@
 mod config;
 mod controllers;
+mod dtos;
 
 use crate::controllers::hello_world::hello_world;
 use actix_web::{http::KeepAlive, App, HttpServer};
