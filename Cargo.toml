@@ -2,7 +2,7 @@
 name = "navarro_blog_api"
 version = "0.1.0"
 edition = "2021"
-description = "The Blog API is a web development application focused on providing functionality to manage and interact with the content of a personal blog through programmatic calls."
+description = "A API Blog é uma aplicação de desenvolvimento web focada em fornecer funcionalidades para gerenciar e interagir com o conteúdo de um blog pessoal por meio de chamadas programáticas."
 license = "MIT"
 readme = "README.md"
 authors = [
