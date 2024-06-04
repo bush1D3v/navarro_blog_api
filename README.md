@@ -17,11 +17,15 @@ A **Blog API** é uma aplicação de desenvolvimento web focada em fornecer func
    <img align='center' height='65' width='65' title='Nginx' alt='nginx' src='https://github.com/bush1D3v/101acessorios_api/assets/133554156/7a445df4-b341-4ab0-97d5-0084638dec99' /> &nbsp;
    <img align='center' height='60' width='60' title='Redis' alt='redis' src='https://github.com/devicons/devicon/blob/master/icons/redis/redis-original.svg' /> &nbsp;
    <img align='center' height='60' width='60' title='Makefile' alt='makefile' src='https://github.com/bush1D3v/bush1D3v/assets/133554156/7d964e81-c0a3-476f-a26b-8813550557aa' />
-   <img align='center' height='55' width='70' title='PostgreSQL' alt='postgresql' src='https://github.com/devicons/devicon/blob/master/icons/postgresql/postgresql-original.svg' />
+   <img align='center' height='55' width='70' title='PostgreSQL' alt='postgresql' src='https://github.com/devicons/devicon/blob/master/icons/postgresql/postgresql-original.svg' /> &nbsp;
+   <img align='center' height='49' width='49' title='Dotenv' alt='dotenv' src='https://github.com/bush1D3v/my_portfolio/assets/133554156/432ec521-c94a-4f24-964e-f62658d04581' /> &nbsp;
    <img align='center' height='48' width='48' title='Insomnia' alt='insomnia' src='https://github.com/bush1D3v/my_portfolio/assets/133554156/75a3fffd-792e-4250-8ef5-2abb615e38a0' /> &nbsp;
-   <img align='center' height='53' width='49' title='Beekeeper' alt='beekeeper' src='https://github.com/bush1D3v/my_portfolio/assets/133554156/0d5b4b55-546c-4bc0-a25c-dfc9116fe993' />
+   <img align='center' height='50' width='50' title='Cors' alt='cors' src='https://github.com/bush1D3v/101acessorios_api/assets/133554156/3b4cccec-065e-428a-a663-1c5939404c1a' />
    <img align='center' height='60' width='70' title='Swagger' alt='swagger' src='https://github.com/bush1D3v/tsbank_api/assets/133554156/6739401f-d03b-47f8-b01f-88da2a9075d1' />
-   <img align='center' height='70' width='70' title='Docker' alt='docker' src='https://github.com/devicons/devicon/blob/master/icons/docker/docker-plain.svg' />
+   <img align='center' height='70' width='70' title='Docker' alt='docker' src='https://github.com/devicons/devicon/blob/master/icons/docker/docker-plain.svg' /> &nbsp;
+   <img align='center' height='48' width='48' title='Bcrypt' alt='bcrypt' src='https://github.com/bush1D3v/solid_rest_api/assets/133554156/5863bac1-a591-4776-82a4-f427681934be' /> &nbsp;
+   <img align='center' height='53' width='49' title='Beekeeper' alt='beekeeper' src='https://github.com/bush1D3v/my_portfolio/assets/133554156/0d5b4b55-546c-4bc0-a25c-dfc9116fe993' /> &nbsp;
+   <img align='center' height='52' width='52' title='Regex' alt='regex' src='https://github.com/bush1D3v/navarro_blog_api/assets/133554156/c928f9c1-519e-481d-8b88-10f8f1f05758' />
 </div>
 
 ## 🏗 Estrutura e Arquitetura
@@ -57,7 +61,11 @@ cd navarro_blog_api
 
 ### ⏬ Instalando Dependências
 
-Certifique-se de ter Node.js instalado no seu sistema. Em seguida, instale as dependências necessárias:
+Certifique-se de ter Cargo instalado no seu sistema. Em seguida, instale as dependências necessárias.
+
+```
+cargo install
+```
 
 ### 🆕 Criando uma Branch
 
@@ -74,6 +82,10 @@ Faça as alterações necessárias no código, adicione novos recursos ou corre�
 ### 🧪 Testando
 
 Garanta que suas alterações não quebraram nenhum recurso existente. Execute os testes e certifique-se de que todos passam:
+
+```
+cargo test
+```
 
 ### 📝 Documentando
 
