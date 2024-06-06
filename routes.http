@@ -1,6 +1,44 @@
-GET http://localhost:8080/world
+## Usuário
+
+### Criação de usuário
+
+POST http://localhost:8080/user
+Content-Type: application/json
+
+### Login de usuário
+
+POST http://localhost:8080/user/login
 Content-Type: application/json
 
 {
-    "message": "Hello world!"
+  name: "Victor Navarro",
+  email: "bush1d3v@gmail.com",
+  password: "12345678%"
+}
+
+### Detalhamento de usuário
+
+GET http://localhost:8080/user/:id
+Content-Type: application/json
+Authorization: Bearer Token
+
+
+### Atualização de usuário
+
+PATCH http://localhost:8080/user/:id
+Content-Type: application/json
+Authorization: Bearer Token
+
+{
+  "email": "bush1d3v2@gmail.com"
+}
+
+### Exclusão de usuário
+
+DELETE http://localhost:8080/user/:id
+Content-Type: application/json
+Authorization: Bearer Token
+
+{
+  "senha": "12345678%"
 }
