@@ -6,8 +6,12 @@ services:
     environment:
       HTTP_PORT: 8080
       DB_HOST: localhost
+      DB_PORT: 5432
+      DB_NAME: blogdb
+      DB_USER: postgres
+      DB_PASSWORD: 220305
       REDIS_HOST: localhost
-      POOL_SIZE: 30
+      POOL_SIZE: 125
     depends_on:
       - db
       - redis
@@ -21,10 +25,14 @@ services:
   api02:
     <<: *api
     environment:
-      HTTP_PORT: 8081
+      HTTP_PORT: 8080
       DB_HOST: localhost
+      DB_PORT: 5432
+      DB_NAME: blogdb
+      DB_USER: postgres
+      DB_PASSWORD: 220305
       REDIS_HOST: localhost
-      POOL_SIZE: 30
+      POOL_SIZE: 125
 
   nginx:
     image: nginx:latest
@@ -44,16 +52,16 @@ services:
     image: postgres
     hostname: db
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: 220305
-      POSTGRES_DB: blogdb
+      DB_NAME: blogdb
+      DB_USER: postgres
+      DB_PASSWORD: 220305
     volumes:
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
       - ./postgresql.conf:/docker-entrypoint-initdb.d/postgresql.conf
     command: postgres -c config_file=/docker-entrypoint-initdb.d/postgresql.conf
     network_mode: host
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready"]
+      test: [ "CMD-SHELL", "pg_isready" ]
       interval: 5s
       timeout: 5s
       retries: 20
