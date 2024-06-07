@@ -1,7 +1,64 @@
-pub struct _User<'a> {
-    pub id: &'a str,
-    pub name: &'a str,
-    pub email: &'a str,
-    pub password: &'a str,
-    pub created_at: &'a str,
+use lazy_static::lazy_static;
+use regex::Regex;
+use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
+use validator::Validate;
+
+#[derive(Serialize, Deserialize)]
+pub struct UserDTO {
+    pub id: String,
+    pub name: String,
+    pub email: String,
+    pub password: String,
+    pub created_at: String,
+}
+
+lazy_static! {
+    static ref RE_NAME: Regex = Regex::new(r"(^[a-zA-ZÀ-ÿ0-9\s]+$)|(^.*?[@$!%*?&].*$)").unwrap();
+    static ref RE_PASSWORD: Regex = Regex::new("^.*?[@$!%*?&].*$").unwrap();
+    static ref RE_EMAIL: Regex =
+        Regex::new(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$").unwrap();
+}
+
+#[derive(Serialize, Deserialize, Debug, ToSchema, Validate)]
+pub struct CreateUserDTO {
+    #[validate(
+        length(
+            min = 3,
+            max = 63,
+            message = "O nome deve ter entre 3 e 63 caracteres."
+        ),
+        regex(
+            path = "RE_NAME",
+            message = "O nome deve conter apenas dígitos validos."
+        )
+    )]
+    #[serde(default)]
+    pub name: String,
+
+    #[validate(
+        email(message = "O e-mail deve ser um endereço válido."),
+        length(
+            min = 10,
+            max = 127,
+            message = "O e-mail deve ter entre 10 e 127 caracteres."
+        ),
+        regex(path = "RE_EMAIL", message = "O e-mail deve ser um endereço válido.")
+    )]
+    #[serde(default)]
+    pub email: String,
+
+    #[validate(
+        length(
+            min = 8,
+            max = 255,
+            message = "A senha deve ter pelo menos 8 caracteres."
+        ),
+        regex(
+            path = "RE_PASSWORD",
+            message = "A senha deve ter pelo menos 1 caractere especial."
+        )
+    )]
+    #[serde(default)]
+    pub password: String,
 }
