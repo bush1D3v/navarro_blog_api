@@ -18,3 +18,9 @@ docker-stop:
 
 docker-clean:
 	docker-compose down --rmi all --volumes
+
+run:
+	RUST_LOG=debug cargo watch -x run
+
+test:
+	cargo test -- --test-threads=1
