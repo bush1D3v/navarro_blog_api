@@ -69,14 +69,14 @@ mod tests {
 
     #[actix_web::test]
     async fn _insert_user_error_name_length() {
-        let mut user = user();
+        let mut user: CreateUserDTO = user();
         user.name = String::from("");
 
-        let resp = insert_user_before(user, "/user").await;
+        let resp: ServiceResponse = insert_user_before(user, "/user").await;
 
         assert!(resp.status().is_client_error());
 
-        let bytes_str =
+        let bytes_str: String =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
 
         assert!(bytes_str.contains("O nome deve ter entre 3 e 63 caracteres."));
@@ -89,14 +89,14 @@ mod tests {
 
     #[actix_web::test]
     async fn _insert_user_error_name_regex() {
-        let mut user = user();
+        let mut user: CreateUserDTO = user();
         user.name = String::from("victor -");
 
-        let resp = insert_user_before(user, "/user").await;
+        let resp: ServiceResponse = insert_user_before(user, "/user").await;
 
         assert!(resp.status().is_client_error());
 
-        let bytes_str =
+        let bytes_str: String =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
 
         assert!(bytes_str.contains("O nome deve conter apenas dígitos validos."));
@@ -109,14 +109,14 @@ mod tests {
 
     #[actix_web::test]
     async fn _insert_user_error_email_length() {
-        let mut user = user();
+        let mut user: CreateUserDTO = user();
         user.email = String::from("");
 
-        let resp = insert_user_before(user, "/user").await;
+        let resp: ServiceResponse = insert_user_before(user, "/user").await;
 
         assert!(resp.status().is_client_error());
 
-        let bytes_str =
+        let bytes_str: String =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
 
         assert!(bytes_str.contains("O e-mail deve ter entre 10 e 127 caracteres."));
@@ -129,14 +129,14 @@ mod tests {
 
     #[actix_web::test]
     async fn _insert_user_error_email_regex() {
-        let mut user = user();
+        let mut user: CreateUserDTO = user();
         user.email = String::from("navarroTeste@.com");
 
-        let resp = insert_user_before(user, "/user").await;
+        let resp: ServiceResponse = insert_user_before(user, "/user").await;
 
         assert!(resp.status().is_client_error());
 
-        let bytes_str =
+        let bytes_str: String =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
 
         assert!(bytes_str.contains("O e-mail deve ser um endereço válido."));
@@ -150,11 +150,11 @@ mod tests {
     #[actix_web::test]
     async fn _insert_user_error_email_conflict_db() {
         FunctionalTester::insert_in_db_users(postgres(), user()).await;
-        let resp = insert_user_before(user(), "/user").await;
+        let resp: ServiceResponse = insert_user_before(user(), "/user").await;
 
         assert!(resp.status().is_client_error());
 
-        let bytes_str =
+        let bytes_str: String =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
 
         assert!(bytes_str.contains("Este e-mail já está sendo utilizado por outro usuário"));
@@ -169,14 +169,14 @@ mod tests {
 
     #[actix_web::test]
     async fn _insert_user_error_password_length() {
-        let mut user = user();
+        let mut user: CreateUserDTO = user();
         user.password = String::from("%");
 
-        let resp = insert_user_before(user, "/user").await;
+        let resp: ServiceResponse = insert_user_before(user, "/user").await;
 
         assert!(resp.status().is_client_error());
 
-        let bytes_str =
+        let bytes_str: String =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
 
         assert!(bytes_str.contains("A senha deve ter pelo menos 8 caracteres."));
@@ -189,14 +189,14 @@ mod tests {
 
     #[actix_web::test]
     async fn _insert_user_error_password_regex() {
-        let mut user = user();
+        let mut user: CreateUserDTO = user();
         user.password = String::from("12345678");
 
-        let resp = insert_user_before(user, "/user").await;
+        let resp: ServiceResponse = insert_user_before(user, "/user").await;
 
         assert!(resp.status().is_client_error());
 
-        let bytes_str =
+        let bytes_str: String =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
 
         assert!(bytes_str.contains("A senha deve ter pelo menos 1 caractere especial."));
