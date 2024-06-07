@@ -59,14 +59,6 @@ git clone https://github.com/{seu-usuario}/navarro_blog_api.git
 cd navarro_blog_api
 ```
 
-### ⏬ Instalando Dependências
-
-Certifique-se de ter Cargo instalado no seu sistema. Em seguida, instale as dependências necessárias.
-
-```
-cargo install
-```
-
 ### 🆕 Criando uma Branch
 
 Antes de iniciar qualquer trabalho, crie uma branch separada para a sua contribuição. Use um nome descritivo para a sua branch:
@@ -84,7 +76,7 @@ Faça as alterações necessárias no código, adicione novos recursos ou corre�
 Garanta que suas alterações não quebraram nenhum recurso existente. Execute os testes e certifique-se de que todos passam:
 
 ```
-cargo test
+make test
 ```
 
 ### 📝 Documentando
