@@ -1,11 +1,11 @@
-## Usuário
+## User
 
-### Criação de usuário
+### Create user
 
 POST http://localhost:8080/user
 Content-Type: application/json
 
-### Login de usuário
+### Login user
 
 POST http://localhost:8080/user/login
 Content-Type: application/json
@@ -16,14 +16,14 @@ Content-Type: application/json
   password: "12345678%"
 }
 
-### Detalhamento de usuário
+### User detail
 
 GET http://localhost:8080/user/:id
 Content-Type: application/json
 Authorization: Bearer Token
 
 
-### Atualização de usuário
+### Update user
 
 PATCH http://localhost:8080/user/:id
 Content-Type: application/json
@@ -33,12 +33,12 @@ Authorization: Bearer Token
   "email": "bush1d3v2@gmail.com"
 }
 
-### Exclusão de usuário
+### Delete user
 
 DELETE http://localhost:8080/user/:id
 Content-Type: application/json
 Authorization: Bearer Token
 
 {
-  "senha": "12345678%"
+  "password": "12345678%"
 }
