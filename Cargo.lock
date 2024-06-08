@@ -630,26 +630,13 @@ dependencies = [
 
 [[package]]
 name = "deadpool"
-version = "0.9.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "421fe0f90f2ab22016f32a9881be5134fdd71c65298917084b0c7477cbc3856e"
-dependencies = [
- "async-trait",
- "deadpool-runtime",
- "num_cpus",
- "retain_mut",
- "serde",
- "tokio",
-]
-
-[[package]]
-name = "deadpool"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6541a3916932fe57768d4be0b1ffb5ec7cbf74ca8c903fdfd5c0fe8aa958f0ed"
 dependencies = [
  "deadpool-runtime",
  "num_cpus",
+ "serde",
  "tokio",
 ]
 
@@ -660,7 +647,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1ab8a4ea925ce79678034870834602a2980f4b88c09e97feb266496dbb4493d2"
 dependencies = [
  "async-trait",
- "deadpool 0.12.1",
+ "deadpool",
  "getrandom",
  "tokio",
  "tokio-postgres",
@@ -669,11 +656,11 @@ dependencies = [
 
 [[package]]
 name = "deadpool-redis"
-version = "0.12.0"
+version = "0.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f1760f60ffc6653b4afd924c5792098d8c00d9a3deb6b3d989eac17949dc422"
+checksum = "7ff315fab2a7a42132352909afc81140d06b8bbfd1414b098ce278e3f95dd1b9"
 dependencies = [
- "deadpool 0.9.5",
+ "deadpool",
  "redis",
  "serde",
 ]
@@ -1582,9 +1569,9 @@ dependencies = [
 
 [[package]]
 name = "redis"
-version = "0.23.3"
+version = "0.25.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4f49cdc0bb3f412bf8e7d1bd90fe1d9eb10bc5c399ba90973c14662a27b3f8ba"
+checksum = "e0d7a6955c7511f60f3ba9e86c6d02b3c3f144f8c24b288d1f4e18074ab8bbec"
 dependencies = [
  "async-trait",
  "bytes",
@@ -1693,12 +1680,6 @@ dependencies = [
  "webpki-roots",
  "winreg",
 ]
-
-[[package]]
-name = "retain_mut"
-version = "0.1.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4389f1d5789befaf6029ebd9f7dac4af7f7e3d61b69d4f30e2ac02b57e7712b0"
 
 [[package]]
 name = "ring"
