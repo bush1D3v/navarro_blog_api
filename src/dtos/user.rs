@@ -1,4 +1,4 @@
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -13,12 +13,11 @@ pub struct UserDTO {
     pub created_at: String,
 }
 
-lazy_static! {
-    static ref RE_NAME: Regex = Regex::new(r"(^[a-zA-ZÀ-ÿ0-9\s]+$)|(^.*?[@$!%*?&].*$)").unwrap();
-    static ref RE_PASSWORD: Regex = Regex::new("^.*?[@$!%*?&].*$").unwrap();
-    static ref RE_EMAIL: Regex =
-        Regex::new(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$").unwrap();
-}
+static RE_NAME: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"(^[a-zA-ZÀ-ÿ0-9\s]+$)|(^.*?[@$!%*?&].*$)").unwrap());
+static RE_PASSWORD: Lazy<Regex> = Lazy::new(|| Regex::new("^.*?[@$!%*?&].*$").unwrap());
+static RE_EMAIL: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$").unwrap());
 
 #[derive(Serialize, Deserialize, Debug, ToSchema, Validate)]
 pub struct CreateUserDTO {
@@ -29,7 +28,7 @@ pub struct CreateUserDTO {
             message = "O nome deve ter entre 3 e 63 caracteres."
         ),
         regex(
-            path = "RE_NAME",
+            path = *RE_NAME,
             message = "O nome deve conter apenas dígitos validos."
         )
     )]
@@ -43,7 +42,7 @@ pub struct CreateUserDTO {
             max = 127,
             message = "O e-mail deve ter entre 10 e 127 caracteres."
         ),
-        regex(path = "RE_EMAIL", message = "O e-mail deve ser um endereço válido.")
+        regex(path = *RE_EMAIL, message = "O e-mail deve ser um endereço válido.")
     )]
     #[serde(default)]
     pub email: String,
@@ -55,7 +54,7 @@ pub struct CreateUserDTO {
             message = "A senha deve ter pelo menos 8 caracteres."
         ),
         regex(
-            path = "RE_PASSWORD",
+            path = *RE_PASSWORD,
             message = "A senha deve ter pelo menos 1 caractere especial."
         )
     )]
