@@ -5,10 +5,10 @@ use std::env;
 pub fn cors() -> Cors {
     let http_port: String = env::var("HTTP_PORT").unwrap_or("8080".into());
 
-    return Cors::default()
+    Cors::default()
         .allowed_origin(&format!("http://localhost:{}", http_port))
         .allowed_methods(vec!["GET", "POST", "PATCH", "DELETE"])
         .allowed_headers(vec![http::header::AUTHORIZATION, http::header::ACCEPT])
         .allowed_header(http::header::CONTENT_TYPE)
-        .max_age(3600);
+        .max_age(3600)
 }
