@@ -8,7 +8,7 @@ use std::sync::Arc;
 pub async fn insert_user_repository(
     queue: Data<Arc<AppQueue>>,
     body: Json<CreateUserDTO>,
-    id: &String,
+    id: String,
 ) -> UserDTO {
     let name: String = body.name.clone();
     let email: String = body.email.clone();

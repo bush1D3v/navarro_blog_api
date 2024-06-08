@@ -11,7 +11,7 @@ use std::sync::Arc;
 pub async fn insert_user_service(
     queue: Data<Arc<AppQueue>>,
     mut body: Json<CreateUserDTO>,
-    id: &String,
+    id: String,
 ) -> Result<UserDTO, std::io::Error> {
     let encrypted_password: String = match hash(&body.password, DEFAULT_COST) {
         Ok(hash) => hash,
