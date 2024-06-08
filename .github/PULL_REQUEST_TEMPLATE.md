@@ -1,31 +1,31 @@
-# Detalhes do Pull Request
+# Pull Request Details
 
-## Motivação e contexto
+## Motivation and context
 
-<!--- Por que essa modificação é necessária? Qual problema ela resolve? -->
+<!--- Why is this modification necessary? What problem does it solve? -->
 
-## Como está sendo testada?
+## How is it being tested?
 
-<!--- Por favor descreva em detalhes como você está testando suas modificações. -->
-<!--- Inclua detalhes do ambiente que você está testando e dos testes que você está executando para ver -->
-<!--- suas modificações afetam outras áreas do código, etc. -->
+<!--- Please describe in detail how you are testing your modifications. -->
+<!--- Include details of the environment you are testing and the tests you are running to see -->
+<!--- your modifications affect other areas of the code, etc. -->
 
-## Tipos de modificações
+## Types of modifications
 
-<!--- Quais os tipos de modificações estão includas no seu código? Coloque um `x` em todas as opções que se aplicam. -->
+<!--- What types of modifications are included in your code? Place an `x` in all options that apply. -->
 
-- [ ] Atualização de dependência / refactoring / documentação
-- [ ] Correção de bug (Sem modificações que impactem a retrocompatibilidade)
-- [ ] Nova funcionalidade(adaptativa ou evolutiva) (Sem modificações que impactem a retrocompatibilidade)
-- [ ] Quebra de compatibilidade (Correção ou nova funcionalidade que impactem a retrocompatibilidade)
+- [ ] Dependency update / refactoring / documentation
+- [ ] Bug fix (No modifications that impact backwards compatibility)
+- [ ] New functionality (adaptive or evolutionary) (No modifications that impact backwards compatibility)
+- [ ] Compatibility break (Correction or new functionality that impacts backwards compatibility)
 
-## Checklist
+## Check list
 
-<!--- Coloque um `x`em todas as opções aplicáveis. -->
-<!--- Se você estiver com alguma dúvida sobre qualquer uma das opções, não exite em perguntar. Estamos aqui para ajudar!-->
+<!--- Place an `x` in all applicable options. -->
+<!--- If you have any questions about any of the options, don't hesitate to ask. We're here to help!-->
 
-- [ ] Meu código está de acordo com o padrão do projeto.
-- [ ] Minhas modificações requerem atualização da documentação.
-- [ ] Eu modifiquei a documentação de acordo com as modificações efetuadas.
-- [ ] Eu adicionei testes para cobrir as minhas modificações.
-- [ ] Todos os testes novos e antigos estão passando.
+- [ ] My code complies with the project standard.
+- [ ] My modifications require updating the documentation.
+- [ ] I modified the documentation according to the changes made.
+- [ ] I added tests to cover my modifications.
+- [ ] All new and old tests are passing.
