@@ -17,7 +17,7 @@ actix-cors = "0.7.0"
 anyhow = "1.0.86"
 bcrypt = "0.15.1"
 chrono = "0.4.38"
-deadpool-postgres = "0.13.2"
+deadpool-postgres = "0.14.0"
 deadpool-redis = { version = "0.12", features = ["serde"] }
 deadqueue = "0.2.4"
 env_logger = "0.10.0"
