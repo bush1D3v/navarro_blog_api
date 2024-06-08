@@ -7,7 +7,6 @@ pub fn cors() -> Cors {
 
     return Cors::default()
         .allowed_origin(&format!("http://localhost:{}", http_port))
-        .allowed_origin_fn(|origin, _req_head| origin.as_bytes().ends_with(b".rust-lang.org"))
         .allowed_methods(vec!["GET", "POST", "PATCH", "DELETE"])
         .allowed_headers(vec![http::header::AUTHORIZATION, http::header::ACCEPT])
         .allowed_header(http::header::CONTENT_TYPE)
