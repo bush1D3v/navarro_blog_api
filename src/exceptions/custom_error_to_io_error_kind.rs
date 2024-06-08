@@ -43,8 +43,6 @@ pub fn custom_error_to_io_error_kind(error: CustomError) -> ErrorKind {
             BcryptError::Io(_) => ErrorKind::ConnectionAborted,
             BcryptError::Rand(_) => ErrorKind::InvalidData,
         },
-        CustomError::TokioPostgres(e) => match e {
-            TokioPostgresError { .. } => ErrorKind::ConnectionAborted,
-        },
+        CustomError::TokioPostgres(_) => ErrorKind::ConnectionAborted,
     }
 }
