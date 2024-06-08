@@ -37,7 +37,7 @@ pub async fn email_exists<'a>(
             ))
         }
     };
-    if rows.len() > 0 {
+    if !rows.is_empty() {
         return Err(std::io::Error::new(
             std::io::ErrorKind::InvalidInput,
             "Este e-mail já está sendo utilizado por outro usuário.",

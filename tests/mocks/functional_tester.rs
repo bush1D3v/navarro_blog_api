@@ -86,7 +86,7 @@ impl FunctionalTester {
 
         let rows = client.query(&stmt, &[]).await.unwrap();
 
-        if rows.len() > 0 {
+        if !rows.is_empty() {
             true
         } else {
             false
@@ -132,7 +132,7 @@ impl FunctionalTester {
 
         let rows = client.query(&stmt, &[]).await.unwrap();
 
-        if rows.len() > 0 {
+        if !rows.is_empty() {
             false
         } else {
             true
