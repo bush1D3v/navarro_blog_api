@@ -61,5 +61,5 @@ pub fn api_doc() -> SwaggerUi {
         }
     }
 
-    return SwaggerUi::new("/{_:.*}").url("/api-docs/openapi.json", ApiDoc::openapi());
+    SwaggerUi::new("/{_:.*}").url("/api-docs/openapi.json", ApiDoc::openapi())
 }

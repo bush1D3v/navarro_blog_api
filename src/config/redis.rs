@@ -10,18 +10,18 @@ pub struct Redis {}
 impl Redis {
     pub async fn get_redis(redis_pool: &Pool, key: &str) -> RedisResult<String> {
         let mut redis_conn = redis_pool.get().await.unwrap();
-        return cmd("GET")
+        cmd("GET")
             .arg(&[key])
             .query_async::<_, String>(&mut redis_conn)
-            .await;
+            .await
     }
 
     pub async fn set_redis(redis_pool: &Pool, key: &str, value: &str) -> RedisResult<()> {
         let mut redis_conn = redis_pool.get().await.unwrap();
-        return cmd("SET")
+        cmd("SET")
             .arg(&[key, value])
             .query_async::<_, ()>(&mut redis_conn)
-            .await;
+            .await
     }
 
     pub async fn pool() -> Pool {
