@@ -32,7 +32,7 @@ async fn user_insert(pool: Pool, queue: Arc<AppQueue>) -> Result<(), std::io::Er
             Err(_) => continue,
         };
         this_sql.pop();
-        sql.push_str(&this_sql.as_str());
+        sql.push_str(this_sql.as_str());
     }
     let mut conn = match pool.get().await {
         Ok(x) => x,
