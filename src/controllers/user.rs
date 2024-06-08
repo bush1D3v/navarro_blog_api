@@ -48,13 +48,10 @@ async fn insert_user(
             };
 
             let redis_key = format!("a/{}", body.email.clone());
-            match Redis::get_redis(&redis_pool, &redis_key).await {
-                Ok(_) => return HttpResponse::UnprocessableEntity().finish(),
-                Err(_) => (),
-            };
+            let _ = Redis::get_redis(&redis_pool, &redis_key).await;
 
             let id: String = uuid::Uuid::new_v4().to_string();
-            match insert_user_service(queue.clone(), body, &id).await {
+            match insert_user_service(queue.clone(), body, id.clone()).await {
                 Ok(dto) => {
                     let body = serde_json::to_string(&dto).unwrap();
                     let _ = Redis::set_redis(&redis_pool, &id, &body).await;
