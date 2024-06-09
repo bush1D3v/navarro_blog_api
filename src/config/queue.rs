@@ -75,7 +75,7 @@ async fn user_insert(pool: Pool, queue: Arc<AppQueue>) -> Result<(), std::io::Er
 
 pub async fn db_flush_queue(pool_async: Pool, queue_async: Arc<AppQueue>) {
     loop {
-        tokio::time::sleep(Duration::from_secs(2)).await;
+        tokio::time::sleep(Duration::from_secs_f32(0.5)).await;
         let queue = queue_async.clone();
         if queue.len() == 0 {
             continue;
