@@ -1,4 +1,4 @@
-name: "Microsoft Defender For Devops"
+name: "Microsoft Defender"
 
 on:
   push:
@@ -26,4 +26,4 @@ jobs:
       uses: github/codeql-action/upload-sarif@v2
       with:
         sarif_file: ${{ steps.msdo.outputs.sarifFile }}
-        
+

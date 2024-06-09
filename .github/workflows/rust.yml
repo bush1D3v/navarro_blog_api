@@ -1,4 +1,4 @@
-name: Rust
+name: Navarro Blog API Build CI
 
 on:
   push:
