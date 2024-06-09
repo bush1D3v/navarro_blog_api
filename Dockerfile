@@ -1,6 +1,6 @@
 FROM rust:1.78.0-alpine
 
-RUN apt-get update -yqq && apt-get install -yqq cmake g++
+RUN apk update && apk add cmake g++
 
 WORKDIR /actix
 
