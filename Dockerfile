@@ -1,4 +1,4 @@
-FROM rust:1.75
+FROM rust:1.78.0-alpine
 
 RUN apt-get update -yqq && apt-get install -yqq cmake g++
 
