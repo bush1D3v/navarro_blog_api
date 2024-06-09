@@ -1,4 +1,4 @@
-name: Docker
+name: Docker Package Publish CI
 on:
   schedule:
     - cron: '36 20 * * *'
