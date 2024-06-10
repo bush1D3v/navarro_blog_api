@@ -1,6 +1,16 @@
-use navarro_blog_api::dtos::user::CreateUserDTO;
+use navarro_blog_api::dtos::user::{CreateUserDTO, UserDTO};
 
-pub fn user() -> CreateUserDTO {
+pub fn complete_user_model() -> UserDTO {
+    return UserDTO {
+        id: uuid::Uuid::new_v4().to_string(),
+        name: String::from("Victor Navarro"),
+        email: String::from("bush1d3v@gmail.com"),
+        password: String::from("12345678%"),
+        created_at: chrono::Utc::now().to_string(),
+    };
+}
+
+pub fn simple_user_model() -> CreateUserDTO {
     return CreateUserDTO {
         name: String::from("Victor Navarro"),
         email: String::from("bush1d3v@gmail.com"),
