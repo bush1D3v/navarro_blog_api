@@ -3,7 +3,8 @@ pub mod mocks;
 #[cfg(test)]
 mod tests {
     use crate::mocks::{
-        enums::db_table::TablesEnum, functional_tester::FunctionalTester, models::user::user,
+        enums::db_table::TablesEnum, functional_tester::FunctionalTester,
+        models::user::complete_user_model,
     };
     use actix_web::{
         body,
@@ -19,11 +20,11 @@ mod tests {
             redis::Redis,
         },
         controllers::user::insert_user,
-        dtos::user::CreateUserDTO,
+        dtos::user::UserDTO,
     };
     use std::sync::Arc;
 
-    async fn insert_user_before(user: CreateUserDTO, path: &str) -> ServiceResponse {
+    async fn insert_user_before(user: UserDTO, path: &str) -> ServiceResponse {
         let redis_pool = Redis::pool().await;
         let pool = postgres();
         let pool_async = pool.clone();
@@ -50,7 +51,7 @@ mod tests {
 
     #[actix_web::test]
     async fn _insert_user() {
-        let resp: ServiceResponse = insert_user_before(user(), "/user").await;
+        let resp: ServiceResponse = insert_user_before(complete_user_model(), "/user").await;
 
         assert!(resp.status().is_success());
 
@@ -61,15 +62,15 @@ mod tests {
 
         assert_eq!(
             true,
-            FunctionalTester::can_see_in_database(postgres(), &TablesEnum::Users, None).await
+            FunctionalTester::can_see_in_database(postgres(), TablesEnum::Users, None).await
         );
 
-        FunctionalTester::delete_from_database(postgres(), &TablesEnum::Users).await;
+        FunctionalTester::delete_from_database(postgres(), TablesEnum::Users).await;
     }
 
     #[actix_web::test]
     async fn _insert_user_error_name_length() {
-        let mut user: CreateUserDTO = user();
+        let mut user: UserDTO = complete_user_model();
         user.name = String::from("");
 
         let resp: ServiceResponse = insert_user_before(user, "/user").await;
@@ -83,13 +84,13 @@ mod tests {
 
         assert_eq!(
             true,
-            FunctionalTester::cant_see_in_database(postgres(), &TablesEnum::Users, None).await
+            FunctionalTester::cant_see_in_database(postgres(), TablesEnum::Users, None).await
         );
     }
 
     #[actix_web::test]
     async fn _insert_user_error_name_regex() {
-        let mut user: CreateUserDTO = user();
+        let mut user: UserDTO = complete_user_model();
         user.name = String::from("victor -");
 
         let resp: ServiceResponse = insert_user_before(user, "/user").await;
@@ -103,13 +104,13 @@ mod tests {
 
         assert_eq!(
             true,
-            FunctionalTester::cant_see_in_database(postgres(), &TablesEnum::Users, None).await
+            FunctionalTester::cant_see_in_database(postgres(), TablesEnum::Users, None).await
         );
     }
 
     #[actix_web::test]
     async fn _insert_user_error_email_length() {
-        let mut user: CreateUserDTO = user();
+        let mut user: UserDTO = complete_user_model();
         user.email = String::from("");
 
         let resp: ServiceResponse = insert_user_before(user, "/user").await;
@@ -123,13 +124,13 @@ mod tests {
 
         assert_eq!(
             true,
-            FunctionalTester::cant_see_in_database(postgres(), &TablesEnum::Users, None).await
+            FunctionalTester::cant_see_in_database(postgres(), TablesEnum::Users, None).await
         );
     }
 
     #[actix_web::test]
     async fn _insert_user_error_email_regex() {
-        let mut user: CreateUserDTO = user();
+        let mut user: UserDTO = complete_user_model();
         user.email = String::from("navarroTeste@.com");
 
         let resp: ServiceResponse = insert_user_before(user, "/user").await;
@@ -143,14 +144,14 @@ mod tests {
 
         assert_eq!(
             true,
-            FunctionalTester::cant_see_in_database(postgres(), &TablesEnum::Users, None).await
+            FunctionalTester::cant_see_in_database(postgres(), TablesEnum::Users, None).await
         );
     }
 
     #[actix_web::test]
     async fn _insert_user_error_email_conflict_db() {
-        FunctionalTester::insert_in_db_users(postgres(), user()).await;
-        let resp: ServiceResponse = insert_user_before(user(), "/user").await;
+        FunctionalTester::insert_in_db_users(postgres(), complete_user_model()).await;
+        let resp: ServiceResponse = insert_user_before(complete_user_model(), "/user").await;
 
         assert!(resp.status().is_client_error());
 
@@ -159,17 +160,17 @@ mod tests {
 
         assert!(bytes_str.contains("Este e-mail já está sendo utilizado por outro usuário"));
 
-        FunctionalTester::delete_from_database(postgres(), &TablesEnum::Users).await;
+        FunctionalTester::delete_from_database(postgres(), TablesEnum::Users).await;
 
         assert_eq!(
             true,
-            FunctionalTester::cant_see_in_database(postgres(), &TablesEnum::Users, None).await
+            FunctionalTester::cant_see_in_database(postgres(), TablesEnum::Users, None).await
         );
     }
 
     #[actix_web::test]
     async fn _insert_user_error_password_length() {
-        let mut user: CreateUserDTO = user();
+        let mut user: UserDTO = complete_user_model();
         user.password = String::from("%");
 
         let resp: ServiceResponse = insert_user_before(user, "/user").await;
@@ -183,13 +184,13 @@ mod tests {
 
         assert_eq!(
             true,
-            FunctionalTester::cant_see_in_database(postgres(), &TablesEnum::Users, None).await
+            FunctionalTester::cant_see_in_database(postgres(), TablesEnum::Users, None).await
         );
     }
 
     #[actix_web::test]
     async fn _insert_user_error_password_regex() {
-        let mut user: CreateUserDTO = user();
+        let mut user: UserDTO = complete_user_model();
         user.password = String::from("12345678");
 
         let resp: ServiceResponse = insert_user_before(user, "/user").await;
@@ -203,7 +204,7 @@ mod tests {
 
         assert_eq!(
             true,
-            FunctionalTester::cant_see_in_database(postgres(), &TablesEnum::Users, None).await
+            FunctionalTester::cant_see_in_database(postgres(), TablesEnum::Users, None).await
         );
     }
 }
