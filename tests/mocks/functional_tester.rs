@@ -1,6 +1,6 @@
-use super::{enums::db_table::TablesEnum, models::user::user};
+use super::{enums::db_table::TablesEnum, models::user::complete_user_model};
 use deadpool_postgres::Pool;
-use navarro_blog_api::dtos::user::CreateUserDTO;
+use navarro_blog_api::dtos::user::UserDTO;
 use std::collections::HashMap;
 
 pub struct FunctionalTester {
@@ -14,7 +14,7 @@ impl std::fmt::Display for FunctionalTester {
 }
 
 impl FunctionalTester {
-    pub fn construct_table(db_table: &TablesEnum) -> Self {
+    pub fn construct_table(db_table: TablesEnum) -> Self {
         let table: &str = match db_table {
             TablesEnum::Users => "users",
             TablesEnum::_Posts => "posts",
@@ -32,7 +32,7 @@ impl FunctionalTester {
         }
     }
 
-    pub async fn delete_from_database(pool: Pool, db_table: &TablesEnum) {
+    pub async fn delete_from_database(pool: Pool, db_table: TablesEnum) {
         let client = pool.get().await.unwrap();
 
         client
@@ -49,7 +49,7 @@ impl FunctionalTester {
 
     pub async fn can_see_in_database(
         pool: Pool,
-        db_table: &TablesEnum,
+        db_table: TablesEnum,
         conditions: Option<HashMap<String, String>>,
     ) -> bool {
         let client = pool.get().await.unwrap();
@@ -95,7 +95,7 @@ impl FunctionalTester {
 
     pub async fn cant_see_in_database(
         pool: Pool,
-        db_table: &TablesEnum,
+        db_table: TablesEnum,
         conditions: Option<HashMap<String, String>>,
     ) -> bool {
         let client = pool.get().await.unwrap();
@@ -139,21 +139,29 @@ impl FunctionalTester {
         }
     }
 
-    pub async fn insert_in_db_users(pool: Pool, user_body: CreateUserDTO) -> CreateUserDTO {
-        let mut pg_user: CreateUserDTO = CreateUserDTO {
+    pub async fn insert_in_db_users(pool: Pool, user_body: UserDTO) -> UserDTO {
+        let mut pg_user: UserDTO = UserDTO {
+            id: user_body.id.clone(),
             name: user_body.name.clone(),
             email: user_body.email.clone(),
             password: user_body.password.clone(),
+            created_at: user_body.created_at.clone(),
         };
 
+        if user_body.id == String::from("") {
+            pg_user.id = complete_user_model().id;
+        }
         if user_body.name == String::from("") {
-            pg_user.name = user().name;
+            pg_user.name = complete_user_model().name;
         }
         if user_body.email == String::from("") {
-            pg_user.email = user().email;
+            pg_user.email = complete_user_model().email;
         }
         if user_body.password == String::from("") {
-            pg_user.password = user().password;
+            pg_user.password = complete_user_model().password;
+        }
+        if user_body.created_at == String::from("") {
+            pg_user.created_at = complete_user_model().created_at;
         }
 
         let client = pool.get().await.unwrap();
@@ -161,15 +169,26 @@ impl FunctionalTester {
         let stmt = client
             .prepare(
                 "INSERT INTO users
-                (name, email, password)
+                (id, name, email, password, created_at)
                 values
-                ($1, $2, $3)",
+                ($1, $2, $3, $4, $5)",
             )
             .await
             .unwrap();
 
+        let uuid_id = uuid::Uuid::parse_str(&pg_user.id).unwrap();
+
         client
-            .query(&stmt, &[&pg_user.name, &pg_user.email, &pg_user.password])
+            .query(
+                &stmt,
+                &[
+                    &uuid_id,
+                    &pg_user.name,
+                    &pg_user.email,
+                    &pg_user.password,
+                    &chrono::Utc::now(),
+                ],
+            )
             .await
             .unwrap();
 
