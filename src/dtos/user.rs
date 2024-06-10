@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use validator::Validate;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct UserDTO {
     pub id: String,
     pub name: String,
