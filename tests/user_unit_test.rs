@@ -61,8 +61,8 @@ mod test {
     }
 
     #[actix_rt::test]
-    async fn _email_exists_middleware() {
-        use navarro_blog_api::middlewares::email_exists::email_exists;
+    async fn _email_exists_provider() {
+        use navarro_blog_api::providers::email_exists::email_exists;
 
         FunctionalTester::insert_in_db_users(postgres(), complete_user_model()).await;
 
