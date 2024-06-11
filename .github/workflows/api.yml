@@ -13,6 +13,8 @@ env:
   DB_NAME: blogdb
   DB_USER: postgres
   DB_PASSWORD: 220305
+  REDIS_HOST: localhost
+  REDIS_PORT: 6379
   POOL_SIZE: 125
 
 jobs:
@@ -21,7 +23,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:13
+        image: postgres:16.3
         env:
           POSTGRES_DB: ${{ env.DB_NAME }}
           POSTGRES_USER: ${{ env.DB_USER }}
@@ -33,6 +35,12 @@ jobs:
           --health-retries 5
         ports:
           - 5432:5432
+
+      redis:
+        image: redis
+        ports:
+          - 6379:6379
+        options: --entrypoint redis-server
 
     steps:
     - name: Checkout code
