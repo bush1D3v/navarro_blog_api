@@ -1,5 +1,5 @@
 CREATE TABLE comments (
-    id                 UUID         PRIMARY KEY NOT NULL DEFAULT,
+    id                 UUID         PRIMARY KEY NOT NULL,
     post_id            UUID         NOT NULL,
     user_id            UUID         NOT NULL,
     parent_comment_id  UUID         NULL,
