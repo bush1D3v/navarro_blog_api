@@ -15,7 +15,7 @@ impl std::fmt::Display for FunctionalTester {
 
 impl FunctionalTester {
     pub fn construct_table(db_table: TablesEnum) -> Self {
-        let table: &str = match db_table {
+        let table = match db_table {
             TablesEnum::Users => "users",
             TablesEnum::_Posts => "posts",
             TablesEnum::_Categories => "categories",
@@ -140,7 +140,7 @@ impl FunctionalTester {
     }
 
     pub async fn insert_in_db_users(pool: Pool, user_body: UserDTO) -> UserDTO {
-        let mut pg_user: UserDTO = UserDTO {
+        let mut pg_user = UserDTO {
             id: user_body.id.clone(),
             name: user_body.name.clone(),
             email: user_body.email.clone(),
