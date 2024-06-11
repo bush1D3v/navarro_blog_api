@@ -2,7 +2,7 @@ mod config;
 mod controllers;
 mod dtos;
 mod exceptions;
-mod middlewares;
+mod providers;
 mod repositories;
 mod services;
 
@@ -16,8 +16,7 @@ use std::{env, net::Ipv4Addr, sync::Arc};
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     env_logger::init();
-    let http_port: String = env::var("HTTP_PORT").unwrap_or("8080".into());
-
+    let http_port = env::var("HTTP_PORT").unwrap_or("8080".into());
     let redis_pool = Redis::pool().await;
     let pool = postgres();
     let pool_async = pool.clone();
