@@ -25,8 +25,8 @@ impl Redis {
     }
 
     pub async fn pool() -> Pool {
-        let mut cfg: Config = Config::default();
-        let redis_host: String = env::var("REDIS_HOST").unwrap_or("0.0.0.0".into());
+        let mut cfg = Config::default();
+        let redis_host = env::var("REDIS_HOST").unwrap_or("0.0.0.0".into());
         cfg.connection = Some(ConnectionInfo {
             addr: ConnectionAddr::Tcp(redis_host, 6379),
             redis: RedisConnectionInfo {

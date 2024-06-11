@@ -10,11 +10,11 @@ pub async fn insert_user_repository(
     body: Json<CreateUserDTO>,
     id: String,
 ) -> UserDTO {
-    let name: String = body.name.clone();
-    let email: String = body.email.clone();
-    let password: String = body.password.clone();
-    let created_at: String = chrono::Utc::now().to_string();
-    let dto: UserDTO = UserDTO {
+    let name = body.name.clone();
+    let email = body.email.clone();
+    let password = body.password.clone();
+    let created_at = chrono::Utc::now().to_string();
+    let dto = UserDTO {
         id: id.clone(),
         name,
         email,

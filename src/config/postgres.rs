@@ -4,7 +4,7 @@ use deadpool_postgres::{Config, Pool, PoolConfig, Runtime};
 use tokio_postgres::NoTls;
 
 pub fn postgres() -> Pool {
-    let mut cfg: Config = Config::new();
+    let mut cfg = Config::new();
     cfg.host = Some(
         env::var("DB_HOST")
             .unwrap_or("localhost".into())
@@ -24,7 +24,7 @@ pub fn postgres() -> Pool {
             .to_string(),
     );
 
-    let pool_size: usize = env::var("POOL_SIZE")
+    let pool_size = env::var("POOL_SIZE")
         .unwrap_or("125".to_string())
         .parse::<usize>()
         .unwrap_or(125);

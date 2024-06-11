@@ -1,7 +1,7 @@
 use crate::{
     config::{queue::AppQueue, redis::Redis},
     dtos::user::CreateUserDTO,
-    middlewares::email_exists::email_exists,
+    providers::email_exists::email_exists,
     services::user::insert_user_service,
 };
 use actix_web::{post, web, HttpResponse, Responder};
@@ -50,7 +50,7 @@ async fn insert_user(
             let redis_key = format!("a/{}", body.email.clone());
             let _ = Redis::get_redis(&redis_pool, &redis_key).await;
 
-            let id: String = uuid::Uuid::new_v4().to_string();
+            let id = uuid::Uuid::new_v4().to_string();
             match insert_user_service(queue.clone(), body, id.clone()).await {
                 Ok(dto) => {
                     let body = serde_json::to_string(&dto).unwrap();

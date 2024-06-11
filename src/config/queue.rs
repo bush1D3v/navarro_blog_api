@@ -10,7 +10,7 @@ type QueueEvent = (String, actix_web::web::Json<CreateUserDTO>, Option<String>);
 pub type AppQueue = deadqueue::unlimited::Queue<QueueEvent>;
 
 async fn user_insert(pool: Pool, queue: Arc<AppQueue>) -> Result<(), std::io::Error> {
-    let mut sql: String = String::new();
+    let mut sql = String::new();
     while queue.len() > 0 {
         let (id, body, created_at) = queue.pop().await;
         let mut sql_builder = SqlBuilder::insert_into("users");
@@ -27,7 +27,7 @@ async fn user_insert(pool: Pool, queue: Arc<AppQueue>) -> Result<(), std::io::Er
             &quote(&body.password),
             &quote(&created_at.unwrap_or(chrono::Utc::now().to_string())),
         ]);
-        let mut this_sql: String = match sql_builder.sql() {
+        let mut this_sql = match sql_builder.sql() {
             Ok(x) => x,
             Err(_) => continue,
         };
