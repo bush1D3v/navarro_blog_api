@@ -13,7 +13,7 @@ pub async fn insert_user_service(
     mut body: Json<CreateUserDTO>,
     id: String,
 ) -> Result<UserDTO, std::io::Error> {
-    let encrypted_password: String = match hash(&body.password, DEFAULT_COST) {
+    let encrypted_password = match hash(&body.password, DEFAULT_COST) {
         Ok(hash) => hash,
         Err(e) => {
             return Err(std::io::Error::new(
