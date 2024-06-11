@@ -2,7 +2,6 @@ use crate::{controllers::user::__path_insert_user, dtos::user::CreateUserDTO};
 use serde::{Deserialize, Serialize};
 use utoipa::{
     openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme},
-    openapi::Components,
     Modify, OpenApi, ToSchema,
 };
 use utoipa_swagger_ui::SwaggerUi;
@@ -41,7 +40,7 @@ pub fn api_doc() -> SwaggerUi {
     struct SecurityModifier;
     impl Modify for SecurityModifier {
         fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
-            let components: &mut Components = match openapi.components.as_mut() {
+            let components = match openapi.components.as_mut() {
                 Some(components) => components,
                 None => unreachable!(),
             };
