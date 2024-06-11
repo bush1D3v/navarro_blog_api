@@ -51,160 +51,136 @@ mod tests {
 
     #[actix_web::test]
     async fn _insert_user() {
-        let resp: ServiceResponse = insert_user_before(complete_user_model(), "/user").await;
+        let resp = insert_user_before(complete_user_model(), "/user").await;
 
         assert!(resp.status().is_success());
 
-        let bytes: String =
+        let bytes =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
 
         assert_eq!(bytes, Bytes::from_static(b""));
 
-        assert_eq!(
-            true,
-            FunctionalTester::can_see_in_database(postgres(), TablesEnum::Users, None).await
-        );
+        assert!(FunctionalTester::can_see_in_database(postgres(), TablesEnum::Users, None).await);
 
         FunctionalTester::delete_from_database(postgres(), TablesEnum::Users).await;
     }
 
     #[actix_web::test]
     async fn _insert_user_error_name_length() {
-        let mut user: UserDTO = complete_user_model();
+        let mut user = complete_user_model();
         user.name = String::from("");
 
-        let resp: ServiceResponse = insert_user_before(user, "/user").await;
+        let resp = insert_user_before(user, "/user").await;
 
         assert!(resp.status().is_client_error());
 
-        let bytes_str: String =
+        let bytes_str =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
 
         assert!(bytes_str.contains("O nome deve ter entre 3 e 63 caracteres."));
 
-        assert_eq!(
-            true,
-            FunctionalTester::cant_see_in_database(postgres(), TablesEnum::Users, None).await
-        );
+        assert!(FunctionalTester::cant_see_in_database(postgres(), TablesEnum::Users, None).await);
     }
 
     #[actix_web::test]
     async fn _insert_user_error_name_regex() {
-        let mut user: UserDTO = complete_user_model();
+        let mut user = complete_user_model();
         user.name = String::from("victor -");
 
-        let resp: ServiceResponse = insert_user_before(user, "/user").await;
+        let resp = insert_user_before(user, "/user").await;
 
         assert!(resp.status().is_client_error());
 
-        let bytes_str: String =
+        let bytes_str =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
 
         assert!(bytes_str.contains("O nome deve conter apenas dígitos validos."));
 
-        assert_eq!(
-            true,
-            FunctionalTester::cant_see_in_database(postgres(), TablesEnum::Users, None).await
-        );
+        assert!(FunctionalTester::cant_see_in_database(postgres(), TablesEnum::Users, None).await);
     }
 
     #[actix_web::test]
     async fn _insert_user_error_email_length() {
-        let mut user: UserDTO = complete_user_model();
+        let mut user = complete_user_model();
         user.email = String::from("");
 
-        let resp: ServiceResponse = insert_user_before(user, "/user").await;
+        let resp = insert_user_before(user, "/user").await;
 
         assert!(resp.status().is_client_error());
 
-        let bytes_str: String =
+        let bytes_str =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
 
         assert!(bytes_str.contains("O e-mail deve ter entre 10 e 127 caracteres."));
 
-        assert_eq!(
-            true,
-            FunctionalTester::cant_see_in_database(postgres(), TablesEnum::Users, None).await
-        );
+        assert!(FunctionalTester::cant_see_in_database(postgres(), TablesEnum::Users, None).await);
     }
 
     #[actix_web::test]
     async fn _insert_user_error_email_regex() {
-        let mut user: UserDTO = complete_user_model();
+        let mut user = complete_user_model();
         user.email = String::from("navarroTeste@.com");
 
-        let resp: ServiceResponse = insert_user_before(user, "/user").await;
+        let resp = insert_user_before(user, "/user").await;
 
         assert!(resp.status().is_client_error());
 
-        let bytes_str: String =
+        let bytes_str =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
 
         assert!(bytes_str.contains("O e-mail deve ser um endereço válido."));
 
-        assert_eq!(
-            true,
-            FunctionalTester::cant_see_in_database(postgres(), TablesEnum::Users, None).await
-        );
+        assert!(FunctionalTester::cant_see_in_database(postgres(), TablesEnum::Users, None).await);
     }
 
     #[actix_web::test]
     async fn _insert_user_error_email_conflict_db() {
         FunctionalTester::insert_in_db_users(postgres(), complete_user_model()).await;
-        let resp: ServiceResponse = insert_user_before(complete_user_model(), "/user").await;
+        let resp = insert_user_before(complete_user_model(), "/user").await;
 
         assert!(resp.status().is_client_error());
 
-        let bytes_str: String =
+        let bytes_str =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
 
         assert!(bytes_str.contains("Este e-mail já está sendo utilizado por outro usuário"));
 
         FunctionalTester::delete_from_database(postgres(), TablesEnum::Users).await;
 
-        assert_eq!(
-            true,
-            FunctionalTester::cant_see_in_database(postgres(), TablesEnum::Users, None).await
-        );
+        assert!(FunctionalTester::cant_see_in_database(postgres(), TablesEnum::Users, None).await);
     }
 
     #[actix_web::test]
     async fn _insert_user_error_password_length() {
-        let mut user: UserDTO = complete_user_model();
+        let mut user = complete_user_model();
         user.password = String::from("%");
 
-        let resp: ServiceResponse = insert_user_before(user, "/user").await;
+        let resp = insert_user_before(user, "/user").await;
 
         assert!(resp.status().is_client_error());
 
-        let bytes_str: String =
+        let bytes_str =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
 
         assert!(bytes_str.contains("A senha deve ter pelo menos 8 caracteres."));
 
-        assert_eq!(
-            true,
-            FunctionalTester::cant_see_in_database(postgres(), TablesEnum::Users, None).await
-        );
+        assert!(FunctionalTester::cant_see_in_database(postgres(), TablesEnum::Users, None).await);
     }
 
     #[actix_web::test]
     async fn _insert_user_error_password_regex() {
-        let mut user: UserDTO = complete_user_model();
+        let mut user = complete_user_model();
         user.password = String::from("12345678");
 
-        let resp: ServiceResponse = insert_user_before(user, "/user").await;
+        let resp = insert_user_before(user, "/user").await;
 
         assert!(resp.status().is_client_error());
 
-        let bytes_str: String =
+        let bytes_str =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
 
         assert!(bytes_str.contains("A senha deve ter pelo menos 1 caractere especial."));
 
-        assert_eq!(
-            true,
-            FunctionalTester::cant_see_in_database(postgres(), TablesEnum::Users, None).await
-        );
+        assert!(FunctionalTester::cant_see_in_database(postgres(), TablesEnum::Users, None).await);
     }
 }
