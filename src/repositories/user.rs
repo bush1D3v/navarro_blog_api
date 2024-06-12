@@ -1,9 +1,11 @@
+use std::sync::Arc;
+
+use actix_web::web::{Data, Json};
+
 use crate::{
     config::queue::AppQueue,
     dtos::user::{CreateUserDTO, UserDTO},
 };
-use actix_web::web::{Data, Json};
-use std::sync::Arc;
 
 pub async fn insert_user_repository(
     queue: Data<Arc<AppQueue>>,

@@ -1,14 +1,15 @@
+use std::sync::Arc;
+
+use actix_web::{HttpResponse, post, Responder, web};
+use serde_json::json;
+use validator::Validate;
+
 use crate::{
     config::{queue::AppQueue, redis::Redis},
     dtos::user::CreateUserDTO,
     providers::email_exists::email_exists,
     services::user::insert_user_service,
 };
-use actix_web::{post, web, HttpResponse, Responder};
-use serde_json::json;
-use std::sync::Arc;
-use utoipa;
-use validator::Validate;
 
 #[utoipa::path(
     tag = "user",

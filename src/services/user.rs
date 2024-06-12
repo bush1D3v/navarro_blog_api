@@ -1,12 +1,14 @@
+use std::sync::Arc;
+
+use actix_web::web::{Data, Json};
+use bcrypt::{DEFAULT_COST, hash};
+
 use crate::{
     config::queue::AppQueue,
     dtos::user::{CreateUserDTO, UserDTO},
     exceptions::custom_error_to_io_error_kind::{custom_error_to_io_error_kind, CustomError},
     repositories::user::insert_user_repository,
 };
-use actix_web::web::{Data, Json};
-use bcrypt::{hash, DEFAULT_COST};
-use std::sync::Arc;
 
 pub async fn insert_user_service(
     queue: Data<Arc<AppQueue>>,

@@ -2,16 +2,19 @@ pub mod mocks;
 
 #[cfg(test)]
 mod test {
+    use std::sync::Arc;
+
+    use actix_web::{test, web};
+
+    use navarro_blog_api::config::{postgres::postgres, queue::AppQueue};
+
     use crate::mocks::{
         enums::db_table::TablesEnum,
         functional_tester::FunctionalTester,
         models::user::{complete_user_model, simple_user_model},
     };
-    use actix_web::web;
-    use navarro_blog_api::config::{postgres::postgres, queue::AppQueue};
-    use std::sync::Arc;
 
-    #[actix_rt::test]
+    #[test]
     async fn _insert_user_service() {
         use navarro_blog_api::services::user::insert_user_service;
 
@@ -36,7 +39,7 @@ mod test {
             .contains(&user.created_at.chars().take(10).collect::<String>()));
     }
 
-    #[actix_rt::test]
+    #[test]
     async fn _insert_user_repository() {
         use navarro_blog_api::repositories::user::insert_user_repository;
 
@@ -60,7 +63,7 @@ mod test {
             .contains(&user.created_at.chars().take(10).collect::<String>()));
     }
 
-    #[actix_rt::test]
+    #[test]
     async fn _email_exists_provider() {
         use navarro_blog_api::providers::email_exists::email_exists;
 

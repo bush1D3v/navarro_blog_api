@@ -1,9 +1,10 @@
+use std::{env, time::Duration};
+
 use deadpool_redis::{
-    redis::{cmd, RedisResult},
-    Config, ConnectionAddr, ConnectionInfo, Pool, PoolConfig, RedisConnectionInfo, Runtime,
+    Config,
+    ConnectionAddr, ConnectionInfo, Pool, PoolConfig, redis::{cmd, RedisResult}, RedisConnectionInfo, Runtime,
     Timeouts,
 };
-use std::{env, time::Duration};
 
 pub struct Redis {}
 

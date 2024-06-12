@@ -1,3 +1,12 @@
+use std::{env, net::Ipv4Addr, sync::Arc};
+
+use actix_web::{App, http::KeepAlive, HttpServer, web};
+
+use config::{api_doc::api_doc, cors::cors, postgres::postgres};
+use config::queue::{AppQueue, db_flush_queue};
+use config::redis::Redis;
+use controllers::user::insert_user;
+
 mod config;
 mod controllers;
 mod dtos;
@@ -5,13 +14,6 @@ mod exceptions;
 mod providers;
 mod repositories;
 mod services;
-
-use actix_web::{http::KeepAlive, web, App, HttpServer};
-use config::queue::{db_flush_queue, AppQueue};
-use config::redis::Redis;
-use config::{api_doc::api_doc, cors::cors, postgres::postgres};
-use controllers::user::insert_user;
-use std::{env, net::Ipv4Addr, sync::Arc};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
