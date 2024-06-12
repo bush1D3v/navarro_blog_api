@@ -1,7 +1,10 @@
-use super::{enums::db_table::TablesEnum, models::user::complete_user_model};
-use deadpool_postgres::Pool;
-use navarro_blog_api::dtos::user::UserDTO;
 use std::collections::HashMap;
+
+use deadpool_postgres::Pool;
+
+use navarro_blog_api::dtos::user::UserDTO;
+
+use super::{enums::db_table::TablesEnum, models::user::complete_user_model};
 
 pub struct FunctionalTester {
     db_table: String,
@@ -86,11 +89,7 @@ impl FunctionalTester {
 
         let rows = client.query(&stmt, &[]).await.unwrap();
 
-        if !rows.is_empty() {
-            true
-        } else {
-            false
-        }
+        !rows.is_empty()
     }
 
     pub async fn cant_see_in_database(
@@ -132,11 +131,7 @@ impl FunctionalTester {
 
         let rows = client.query(&stmt, &[]).await.unwrap();
 
-        if !rows.is_empty() {
-            false
-        } else {
-            true
-        }
+        rows.is_empty()
     }
 
     pub async fn insert_in_db_users(pool: Pool, user_body: UserDTO) -> UserDTO {
@@ -148,19 +143,19 @@ impl FunctionalTester {
             created_at: user_body.created_at.clone(),
         };
 
-        if user_body.id == String::from("") {
+        if user_body.id == *"" {
             pg_user.id = complete_user_model().id;
         }
-        if user_body.name == String::from("") {
+        if user_body.name == *"" {
             pg_user.name = complete_user_model().name;
         }
-        if user_body.email == String::from("") {
+        if user_body.email == *"" {
             pg_user.email = complete_user_model().email;
         }
-        if user_body.password == String::from("") {
+        if user_body.password == *"" {
             pg_user.password = complete_user_model().password;
         }
-        if user_body.created_at == String::from("") {
+        if user_body.created_at == *"" {
             pg_user.created_at = complete_user_model().created_at;
         }
 
