@@ -1,10 +1,11 @@
-use crate::{controllers::user::__path_insert_user, dtos::user::CreateUserDTO};
 use serde::{Deserialize, Serialize};
 use utoipa::{
-    openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme},
-    Modify, OpenApi, ToSchema,
+    Modify,
+    OpenApi, openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme}, ToSchema,
 };
 use utoipa_swagger_ui::SwaggerUi;
+
+use crate::{controllers::user::__path_insert_user, dtos::user::CreateUserDTO};
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 struct ValidationErrors {
