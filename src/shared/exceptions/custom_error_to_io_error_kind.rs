@@ -1,10 +1,9 @@
-use std::io::ErrorKind;
-
 use actix_web::http::StatusCode;
 use anyhow::Error as AnyhowError;
 use bcrypt::BcryptError;
 use deadpool_postgres::PoolError;
-use tokio_postgres::{Error as TokioPostgresError, error::SqlState};
+use std::io::ErrorKind;
+use tokio_postgres::{error::SqlState, Error as TokioPostgresError};
 
 pub enum CustomError<'a> {
     _Http(&'a StatusCode),
