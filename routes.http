@@ -1,3 +1,13 @@
+## Swagger
+
+### Get Swagger UI
+
+GET  http://localhost:8080
+
+### Get Raw JSON
+
+GET  http://localhost:8080/api-docs/openapi.json
+
 ## User
 
 ### Create user
