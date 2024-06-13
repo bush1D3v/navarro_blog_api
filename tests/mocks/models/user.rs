@@ -1,4 +1,4 @@
-use navarro_blog_api::dtos::user::{CreateUserDTO, UserDTO};
+use navarro_blog_api::modules::user::user_dtos::{CreateUserDTO, UserDTO};
 
 pub fn complete_user_model() -> UserDTO {
     return UserDTO {

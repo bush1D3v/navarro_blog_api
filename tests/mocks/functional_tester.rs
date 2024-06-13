@@ -1,10 +1,7 @@
-use std::collections::HashMap;
-
-use deadpool_postgres::Pool;
-
-use navarro_blog_api::dtos::user::UserDTO;
-
 use super::{enums::db_table::TablesEnum, models::user::complete_user_model};
+use deadpool_postgres::Pool;
+use navarro_blog_api::modules::user::user_dtos::UserDTO;
+use std::collections::HashMap;
 
 pub struct FunctionalTester {
     db_table: String,

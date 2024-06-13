@@ -1,7 +1,7 @@
 pub mod config;
-pub mod controllers;
-pub mod dtos;
-pub mod exceptions;
+pub mod infra;
+pub mod middlewares;
+pub mod modules;
 pub mod providers;
-pub mod repositories;
-pub mod services;
+pub mod shared;
+pub mod utils;

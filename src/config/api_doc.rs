@@ -1,41 +1,42 @@
-use serde::{Deserialize, Serialize};
 use utoipa::{
-    Modify,
-    OpenApi, openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme}, ToSchema,
+    openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme},
+    Modify, OpenApi,
 };
 use utoipa_swagger_ui::SwaggerUi;
 
-use crate::{controllers::user::__path_insert_user, dtos::user::CreateUserDTO};
-
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-struct ValidationErrors {
-    password: Vec<ErrorDetail>,
-}
-
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-struct ErrorDetail {
-    code: String,
-    message: String,
-    params: std::collections::HashMap<String, serde_json::Value>,
-}
+use crate::{
+    modules::user::{
+        user_controllers::{LoginResponse, __path_insert_user, __path_login_user},
+        user_dtos::{CreateUserDTO, LoginUserDTO},
+    },
+    shared::structs::error_struct::{ErrorParams, ErrorStruct},
+};
 
 pub fn api_doc() -> SwaggerUi {
     #[derive(OpenApi)]
     #[openapi(
-        paths(insert_user),
-        components(schemas(CreateUserDTO, ValidationErrors, ErrorDetail)),
-        modifiers(&SecurityModifier),
-        servers((
-            url = "http://localhost:8080",
-            description = "Local Server",
-        ), (
-            url = "https://hub.docker.com/repository/docker/bush1d3v/navarro_blog_api",
-            description = "Docker Image",
-        )),
-        tags((
-            name = "user", description = "Controladores da entidade de usuário"
-        )),
-    )]
+		paths(insert_user, login_user),
+		components(
+			schemas(
+				CreateUserDTO,
+				LoginUserDTO,
+				LoginResponse,
+				ErrorStruct,
+				ErrorParams,
+			)
+		),
+		modifiers(& SecurityModifier),
+		servers((
+		    url = "http://localhost:8080",
+		    description = "Local Server",
+		), (
+		    url = "https://hub.docker.com/repository/docker/bush1d3v/navarro_blog_api",
+		    description = "Docker Image",
+		)),
+		tags((
+		    name = "user", description = "Controladores da entidade de usuário"
+		)),
+	)]
     pub struct ApiDoc;
 
     struct SecurityModifier;
