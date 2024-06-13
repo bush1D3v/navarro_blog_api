@@ -1,6 +1,5 @@
-use std::env;
-
 use deadpool_postgres::{Config, Pool, PoolConfig, Runtime};
+use std::env;
 use tokio_postgres::NoTls;
 
 pub fn postgres() -> Pool {

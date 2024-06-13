@@ -1,15 +1,15 @@
-use crate::{
-    dtos::user::CreateUserDTO,
-    exceptions::custom_error_to_io_error_kind::{custom_error_to_io_error_kind, CustomError},
+use super::user_dtos::CreateUserDTO;
+use crate::shared::exceptions::custom_error_to_io_error_kind::{
+    custom_error_to_io_error_kind, CustomError,
 };
 use deadpool_postgres::Pool;
 use sql_builder::{quote, SqlBuilder};
 use std::{sync::Arc, time::Duration};
 
 type QueueEvent = (String, actix_web::web::Json<CreateUserDTO>, Option<String>);
-pub type AppQueue = deadqueue::unlimited::Queue<QueueEvent>;
+pub type CreateUserAppQueue = deadqueue::unlimited::Queue<QueueEvent>;
 
-async fn user_insert(pool: Pool, queue: Arc<AppQueue>) -> Result<(), std::io::Error> {
+async fn user_insert(pool: Pool, queue: Arc<CreateUserAppQueue>) -> Result<(), std::io::Error> {
     let mut sql = String::new();
     while queue.len() > 0 {
         let (id, body, created_at) = queue.pop().await;
@@ -73,7 +73,7 @@ async fn user_insert(pool: Pool, queue: Arc<AppQueue>) -> Result<(), std::io::Er
     Ok(())
 }
 
-pub async fn db_flush_queue(pool_async: Pool, queue_async: Arc<AppQueue>) {
+pub async fn user_flush_queue(pool_async: Pool, queue_async: Arc<CreateUserAppQueue>) {
     loop {
         tokio::time::sleep(Duration::from_secs_f32(0.5)).await;
         let queue = queue_async.clone();
