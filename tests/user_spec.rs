@@ -1,39 +1,120 @@
 pub mod mocks;
 
 #[cfg(test)]
-mod tests {
+mod unitary_test {
+    use crate::mocks::{
+        enums::db_table::TablesEnum,
+        functional_tester::FunctionalTester,
+        models::user::{complete_user_model, simple_user_model},
+    };
+    use actix_web::{test, web};
+    use navarro_blog_api::{
+        infra::postgres::postgres, modules::user::user_queues::CreateUserAppQueue,
+    };
     use std::sync::Arc;
 
-    use actix_web::{
-        App,
-        body,
-        dev::ServiceResponse,
-        test,
-        web::{Bytes, Data},
-    };
+    #[test]
+    async fn _insert_user_service() {
+        use navarro_blog_api::modules::user::user_services::insert_user_service;
 
-    use navarro_blog_api::{
-        config::{
-            postgres::postgres,
-            queue::{AppQueue, db_flush_queue},
-            redis::Redis,
-        },
-        controllers::user::insert_user,
-        dtos::user::UserDTO,
-    };
+        let queue = Arc::new(CreateUserAppQueue::new());
 
+        let user = complete_user_model();
+
+        let response = insert_user_service(
+            web::Data::new(queue.clone()),
+            web::Json(simple_user_model()),
+            user.id.clone(),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(response.id, user.id);
+        assert_eq!(response.name, user.name);
+        assert_eq!(response.email, user.email);
+        assert!(bcrypt::verify(&user.password, &response.password).unwrap());
+        assert!(response
+            .created_at
+            .contains(&user.created_at.chars().take(10).collect::<String>()));
+    }
+
+    #[test]
+    async fn _insert_user_repository() {
+        use navarro_blog_api::modules::user::user_repositories::insert_user_repository;
+
+        let queue = Arc::new(CreateUserAppQueue::new());
+
+        let user = complete_user_model();
+
+        let response = insert_user_repository(
+            web::Data::new(queue.clone()),
+            web::Json(simple_user_model()),
+            user.id.clone(),
+        )
+        .await;
+
+        assert_eq!(response.id, user.id);
+        assert_eq!(response.name, user.name);
+        assert_eq!(response.email, user.email);
+        assert_eq!(response.password, user.password);
+        assert!(response
+            .created_at
+            .contains(&user.created_at.chars().take(10).collect::<String>()));
+    }
+
+    #[test]
+    async fn _email_exists_provider() {
+        use navarro_blog_api::providers::email_exists::email_exists;
+
+        FunctionalTester::insert_in_db_users(postgres(), complete_user_model()).await;
+
+        let pool = web::Data::new(postgres());
+        let simple_user = web::Json(simple_user_model());
+
+        let response = email_exists(&pool, &simple_user).await;
+
+        assert!(response.is_err());
+        assert_eq!(
+            response.err().map(|e| e.to_string()),
+            Some(String::from(
+                "Este e-mail já está sendo utilizado por outro usuário."
+            ))
+        );
+
+        FunctionalTester::delete_from_database(postgres(), TablesEnum::Users).await;
+    }
+}
+
+#[cfg(test)]
+mod integration_tests {
     use crate::mocks::{
         enums::db_table::TablesEnum, functional_tester::FunctionalTester,
         models::user::complete_user_model,
     };
+    use actix_web::{
+        body,
+        dev::ServiceResponse,
+        test,
+        web::{Bytes, Data},
+        App,
+    };
+    use navarro_blog_api::{
+        infra::{postgres::postgres, redis::Redis},
+        modules::user::{
+            user_controllers::insert_user,
+            user_dtos::UserDTO,
+            user_queues::{user_flush_queue, CreateUserAppQueue},
+        },
+    };
+    use std::sync::Arc;
 
     async fn insert_user_before(user: UserDTO, path: &str) -> ServiceResponse {
         let redis_pool = Redis::pool().await;
         let pool = postgres();
         let pool_async = pool.clone();
-        let queue = Arc::new(AppQueue::new());
+        let queue = Arc::new(CreateUserAppQueue::new());
         let queue_async = queue.clone();
-        tokio::spawn(async move { db_flush_queue(pool_async, queue_async).await });
+        tokio::spawn(async move { user_flush_queue(pool_async, queue_async).await });
 
         let app = test::init_service(
             App::new()
@@ -150,7 +231,7 @@ mod tests {
 
         FunctionalTester::delete_from_database(postgres(), TablesEnum::Users).await;
 
-        //assert!(FunctionalTester::cant_see_in_database(postgres(), TablesEnum::Users, None).await);
+        assert!(FunctionalTester::cant_see_in_database(postgres(), TablesEnum::Users, None).await);
     }
 
     #[test]
