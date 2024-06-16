@@ -6,17 +6,6 @@ on:
   pull_request:
     branches: [ "master" ]
 
-env:
-  CARGO_TERM_COLOR: always
-  DB_HOST: localhost
-  DB_PORT: 5432
-  DB_NAME: blogdb
-  DB_USER: postgres
-  DB_PASSWORD: 220305
-  REDIS_HOST: localhost
-  REDIS_PORT: 6379
-  POOL_SIZE: 125
-
 jobs:
   build:
     runs-on: ubuntu-22.04
@@ -25,9 +14,9 @@ jobs:
       postgres:
         image: postgres:16.3
         env:
-          POSTGRES_DB: ${{ env.DB_NAME }}
-          POSTGRES_USER: ${{ env.DB_USER }}
-          POSTGRES_PASSWORD: ${{ env.DB_PASSWORD }}
+          POSTGRES_DB: ${{ secrets.DB_NAME }}
+          POSTGRES_USER: ${{ secrets.DB_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.DB_PASSWORD }}
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -57,7 +46,7 @@ jobs:
 
     - name: Run migrations
       run: |
-        export DATABASE_URL=postgres://${{ env.DB_USER }}:${{ env.DB_PASSWORD }}@localhost:${{ env.DB_PORT }}/${{ env.DB_NAME }}
+        export DATABASE_URL=postgres://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@localhost:5432/${{ secrets.DB_NAME }}
         diesel migration run
 
     - name: Build
