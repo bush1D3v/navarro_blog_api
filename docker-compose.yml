@@ -3,36 +3,17 @@ version: '3.2'
 services:
   api01: &api
     build: .
-    environment:
-      HTTP_PORT: 8080
-      DB_HOST: localhost
-      DB_PORT: 5432
-      DB_NAME: blogdb
-      DB_USER: postgres
-      DB_PASSWORD: 220305
-      REDIS_HOST: localhost
-      POOL_SIZE: 125
+    env_file:
+      - .env
     depends_on:
       - db
       - redis
-    deploy:
-      resources:
-        limits:
-          cpus: '0.15'
-          memory: '0.4GB'
-    network_mode: "host"
+    network_mode: bridge
 
   api02:
     <<: *api
-    environment:
-      HTTP_PORT: 8080
-      DB_HOST: localhost
-      DB_PORT: 5432
-      DB_NAME: blogdb
-      DB_USER: postgres
-      DB_PASSWORD: 220305
-      REDIS_HOST: localhost
-      POOL_SIZE: 125
+    env_file:
+      - .env
 
   nginx:
     image: nginx:latest
@@ -41,43 +22,26 @@ services:
     depends_on:
       - api01
       - api02
-    network_mode: host
-    deploy:
-      resources:
-        limits:
-          cpus: '0.15'
-          memory: '0.5GB'
+    network_mode: bridge
 
   db:
     image: postgres
     hostname: db
-    environment:
-      DB_NAME: blogdb
-      DB_USER: postgres
-      DB_PASSWORD: 220305
+    env_file:
+      - .env
     volumes:
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
       - ./postgresql.conf:/docker-entrypoint-initdb.d/postgresql.conf
     command: postgres -c config_file=/docker-entrypoint-initdb.d/postgresql.conf
-    network_mode: host
+    network_mode: bridge
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready" ]
       interval: 5s
       timeout: 5s
       retries: 20
-    deploy:
-      resources:
-        limits:
-          cpus: '0.9'
-          memory: '1.4GB'
 
   redis:
     image: redis
     hostname: redis
-    network_mode: host
+    network_mode: bridge
     command: redis-server --save "" --appendonly no --maxclients 20000
-    deploy:
-      resources:
-        limits:
-          cpus: '0.15'
-          memory: '0.3GB'
