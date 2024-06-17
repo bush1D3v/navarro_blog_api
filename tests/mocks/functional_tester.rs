@@ -1,7 +1,7 @@
 use super::{enums::db_table::TablesEnum, models::user::complete_user_model};
 use deadpool_postgres::Pool;
 use navarro_blog_api::modules::user::user_dtos::UserDTO;
-use std::collections::HashMap;
+use sql_builder::prelude::*;
 
 pub struct FunctionalTester {
     db_table: String,
@@ -17,6 +17,7 @@ impl FunctionalTester {
     pub fn construct_table(db_table: TablesEnum) -> Self {
         let table = match db_table {
             TablesEnum::Users => "users",
+            TablesEnum::Salt => "salt",
             TablesEnum::_Posts => "posts",
             TablesEnum::_Categories => "categories",
             TablesEnum::_Tags => "tags",
@@ -32,58 +33,58 @@ impl FunctionalTester {
         }
     }
 
-    pub async fn delete_from_database(pool: Pool, db_table: TablesEnum) {
+    pub async fn delete_from_database(
+        pool: Pool,
+        db_table: TablesEnum,
+        conditions: Option<Vec<(&str, &str)>>,
+    ) {
         let client = pool.get().await.unwrap();
+        let mut sql = SqlBuilder::delete_from(FunctionalTester::construct_table(db_table).db_table);
 
-        client
-            .execute(
-                &format!(
-                    "DELETE FROM {};",
-                    FunctionalTester::construct_table(db_table)
-                ),
-                &[],
-            )
-            .await
-            .unwrap();
+        if let Some(conditions) = conditions {
+            for (key, value) in conditions {
+                if key.contains("id") {
+                    sql.field(&key);
+                    sql.values(&[&quote(uuid::Uuid::parse_str(value).unwrap())]);
+                } else {
+                    sql.field(&key);
+                    sql.values(&[&quote(value)]);
+                }
+            }
+        }
+
+        let stmt = sql.sql().unwrap();
+
+        client.prepare(&stmt).await.unwrap();
+        client.execute(&stmt, &[]).await.unwrap();
     }
 
     pub async fn can_see_in_database(
         pool: Pool,
         db_table: TablesEnum,
-        conditions: Option<HashMap<String, String>>,
+        conditions: Option<Vec<(&str, &str)>>,
     ) -> bool {
         let client = pool.get().await.unwrap();
 
-        let conditions_query = if let Some(conditions) = conditions {
-            let conditions_str: Vec<String> = conditions
-                .into_iter()
-                .map(|(key, value)| format!("{} = {}", key, value))
-                .collect();
+        let mut sql = SqlBuilder::select_from(FunctionalTester::construct_table(db_table).db_table);
 
-            conditions_str.join(" AND ")
-        } else {
-            String::new()
-        };
+        if let Some(conditions) = conditions {
+            for (key, value) in conditions {
+                if key.contains("id") {
+                    sql.and_where(format!(
+                        "\"{}\" = {}",
+                        key,
+                        uuid::Uuid::parse_str(value).unwrap()
+                    ));
+                } else {
+                    sql.and_where(format!("\"{}\" = '{}'", key, value));
+                }
+            }
+        }
 
-        let stmt = if conditions_query.is_empty() {
-            client
-                .prepare(&format!(
-                    "SELECT * FROM {}",
-                    FunctionalTester::construct_table(db_table).db_table,
-                ))
-                .await
-                .unwrap()
-        } else {
-            client
-                .prepare(&format!(
-                    "SELECT * FROM {} WHERE {}",
-                    FunctionalTester::construct_table(db_table).db_table,
-                    conditions_query
-                ))
-                .await
-                .unwrap()
-        };
+        let stmt = sql.sql().unwrap();
 
+        let stmt = client.prepare(&stmt).await.unwrap();
         let rows = client.query(&stmt, &[]).await.unwrap();
 
         !rows.is_empty()
@@ -92,43 +93,60 @@ impl FunctionalTester {
     pub async fn cant_see_in_database(
         pool: Pool,
         db_table: TablesEnum,
-        conditions: Option<HashMap<String, String>>,
+        conditions: Option<Vec<(&str, &str)>>,
     ) -> bool {
         let client = pool.get().await.unwrap();
 
-        let conditions_query = if let Some(conditions) = conditions {
-            let conditions_str: Vec<String> = conditions
-                .into_iter()
-                .map(|(key, value)| format!("{} = {}", key, value))
-                .collect();
+        let mut sql = SqlBuilder::select_from(FunctionalTester::construct_table(db_table).db_table);
 
-            conditions_str.join(" AND ")
-        } else {
-            String::new()
-        };
+        if let Some(conditions) = conditions {
+            for (key, value) in conditions {
+                if key.contains("id") {
+                    sql.and_where(format!(
+                        "\"{}\" = {}",
+                        key,
+                        uuid::Uuid::parse_str(value).unwrap()
+                    ));
+                } else {
+                    sql.and_where(format!("\"{}\" = '{}'", key, value));
+                }
+            }
+        }
 
-        let stmt = if conditions_query.is_empty() {
-            client
-                .prepare(&format!(
-                    "SELECT * FROM {}",
-                    FunctionalTester::construct_table(db_table).db_table,
-                ))
-                .await
-                .unwrap()
-        } else {
-            client
-                .prepare(&format!(
-                    "SELECT * FROM {} WHERE {}",
-                    FunctionalTester::construct_table(db_table).db_table,
-                    conditions_query
-                ))
-                .await
-                .unwrap()
-        };
+        let stmt = sql.sql().unwrap();
 
+        let stmt = client.prepare(&stmt).await.unwrap();
         let rows = client.query(&stmt, &[]).await.unwrap();
 
         rows.is_empty()
+    }
+
+    pub async fn insert_in_db_salt(pool: Pool, user_id: String, salt: String) -> String {
+        let client = pool.get().await.unwrap();
+
+        let user_id2 = uuid::Uuid::parse_str(&user_id).unwrap();
+        let salt2 = uuid::Uuid::parse_str(&salt).unwrap();
+
+        let stmt = client
+            .prepare(
+                "INSERT INTO salt
+                (user_id, salt)
+                values
+                ($1, $2)",
+            )
+            .await
+            .unwrap();
+
+        client.query(&stmt, &[&user_id2, &salt2]).await.unwrap();
+
+        salt
+    }
+
+    pub async fn get_salt_from_db(pool: Pool) -> String {
+        let client = pool.get().await.unwrap();
+        let stmt = client.prepare("SELECT salt FROM salt").await.unwrap();
+        let rows = client.query(&stmt, &[]).await.unwrap();
+        rows[0].get("salt")
     }
 
     pub async fn insert_in_db_users(pool: Pool, user_body: UserDTO) -> UserDTO {
