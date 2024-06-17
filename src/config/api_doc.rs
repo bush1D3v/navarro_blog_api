@@ -6,7 +6,7 @@ use utoipa_swagger_ui::SwaggerUi;
 
 use crate::{
     modules::user::{
-        user_controllers::{LoginResponse, __path_insert_user, __path_login_user},
+        user_controllers::{LoginUserControllerResponse, __path_insert_user, __path_login_user},
         user_dtos::{CreateUserDTO, LoginUserDTO},
     },
     shared::structs::error_struct::{ErrorParams, ErrorStruct},
@@ -20,7 +20,7 @@ pub fn api_doc() -> SwaggerUi {
 			schemas(
 				CreateUserDTO,
 				LoginUserDTO,
-				LoginResponse,
+				LoginUserControllerResponse,
 				ErrorStruct,
 				ErrorParams,
 			)
