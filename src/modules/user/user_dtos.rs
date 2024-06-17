@@ -4,24 +4,24 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use validator::Validate;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct UserDTO {
-	pub id: String,
-	pub name: String,
-	pub email: String,
-	pub password: String,
-	pub created_at: String,
+    pub id: String,
+    pub name: String,
+    pub email: String,
+    pub password: String,
+    pub created_at: String,
 }
 
 static RE_NAME: Lazy<Regex> =
-	Lazy::new(|| Regex::new(r"(^[a-zA-ZÀ-ÿ0-9\s]+$)|(^.*?[@$!%*?&].*$)").unwrap());
+    Lazy::new(|| Regex::new(r"(^[a-zA-ZÀ-ÿ0-9\s]+$)|(^.*?[@$!%*?&].*$)").unwrap());
 static RE_PASSWORD: Lazy<Regex> = Lazy::new(|| Regex::new("^.*?[@$!%*?&].*$").unwrap());
 static RE_EMAIL: Lazy<Regex> =
-	Lazy::new(|| Regex::new(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$").unwrap());
+    Lazy::new(|| Regex::new(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$").unwrap());
 
 #[derive(Serialize, Deserialize, Debug, ToSchema, Validate)]
 pub struct CreateUserDTO {
-	#[validate(
+    #[validate(
 		length(
 			min = 3,
 			max = 63,
@@ -32,10 +32,10 @@ pub struct CreateUserDTO {
 			message = "O nome deve conter apenas dígitos validos."
 		)
 	)]
-	#[serde(default)]
-	pub name: String,
+    #[serde(default)]
+    pub name: String,
 
-	#[validate(
+    #[validate(
 		email(message = "O e-mail deve ser um endereço válido."),
 		length(
 			min = 10,
@@ -44,10 +44,10 @@ pub struct CreateUserDTO {
 		),
 		regex(path = * RE_EMAIL, message = "O e-mail deve ser um endereço válido.")
 	)]
-	#[serde(default)]
-	pub email: String,
+    #[serde(default)]
+    pub email: String,
 
-	#[validate(
+    #[validate(
 		length(
 			min = 8,
 			max = 255,
@@ -58,13 +58,13 @@ pub struct CreateUserDTO {
 			message = "A senha deve ter pelo menos 1 caractere especial."
 		)
 	)]
-	#[serde(default)]
-	pub password: String,
+    #[serde(default)]
+    pub password: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, ToSchema, Validate)]
+#[derive(Serialize, Deserialize, Debug, ToSchema, Validate, Clone)]
 pub struct LoginUserDTO {
-	#[validate(
+    #[validate(
 		email(message = "O e-mail deve ser um endereço válido."),
 		length(
 			min = 10,
@@ -73,10 +73,10 @@ pub struct LoginUserDTO {
 		),
 		regex(path = * RE_EMAIL, message = "O e-mail deve ser um endereço válido.")
 	)]
-	#[serde(default)]
-	pub email: String,
+    #[serde(default)]
+    pub email: String,
 
-	#[validate(
+    #[validate(
 		length(
 			min = 8,
 			max = 255,
@@ -87,6 +87,6 @@ pub struct LoginUserDTO {
 			message = "A senha deve ter pelo menos 1 caractere especial."
 		)
 	)]
-	#[serde(default)]
-	pub password: String,
+    #[serde(default)]
+    pub password: String,
 }
