@@ -2,17 +2,17 @@
 
 ### Get Swagger UI
 
-GET  http://localhost:8080
+GET  BASE_URL:HTTP_PORT
 
 ### Get Raw JSON
 
-GET  http://localhost:8080/api-docs/openapi.json
+GET  BASE_URL:HTTP_PORT/api-docs/openapi.json
 
 ## User
 
 ### Create user
 
-POST http://localhost:8080/user
+POST BASE_URL:HTTP_PORT/user
 Content-Type: application/json
 
 {
@@ -23,7 +23,7 @@ Content-Type: application/json
 
 ### Login user
 
-POST http://localhost:8080/user/login
+POST BASE_URL:HTTP_PORT/user/login
 Content-Type: application/json
 
 {
@@ -33,13 +33,13 @@ Content-Type: application/json
 
 ### User detail
 
-GET http://localhost:8080/user/:id
+GET BASE_URL:HTTP_PORT/user/:id
 Content-Type: application/json
 Authorization: Bearer Token
 
 ### Update user
 
-PATCH http://localhost:8080/user/:id
+PATCH BASE_URL:HTTP_PORT/user/:id
 Content-Type: application/json
 Authorization: Bearer Token
 
@@ -49,7 +49,7 @@ Authorization: Bearer Token
 
 ### Delete user
 
-DELETE http://localhost:8080/user/:id
+DELETE BASE_URL:HTTP_PORT/user/:id
 Content-Type: application/json
 Authorization: Bearer Token
 
