@@ -1,5 +1,6 @@
 pub enum TablesEnum {
     Users,
+    Salt,
     _Posts,
     _Categories,
     _Tags,
