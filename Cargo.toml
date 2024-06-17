@@ -35,4 +35,4 @@ uuid = { version = "1.8.0", features = ["v4", "fast-rng"] }
 validator = { version = "0.18", features = ["derive"] }
 
 [dev-dependencies]
-actix-rt = "2.0.0"
+actix-rt = "2.10.0"
