@@ -65,7 +65,7 @@ pub async fn login_user_service(
                     ))
                 }
             };
-            match verify(body.password.clone(), &password_without_salt) {
+            match verify(body.password.clone(), password_without_salt) {
                 Ok(true) => {
                     let mut claims = Claims {
                         sub: repository_response.id.clone(),
@@ -119,6 +119,6 @@ pub async fn login_user_service(
                 )),
             }
         }
-        Err(e) => Err(std::io::Error::new(e.kind().clone(), e)),
+        Err(e) => Err(std::io::Error::new(e.kind(), e)),
     }
 }
