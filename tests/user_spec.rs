@@ -583,9 +583,12 @@ mod integration_tests {
         .unwrap();
         assert_eq!(token_data.claims.sub, user.id);
 
-        FunctionalTester::delete_from_database(postgres(), TablesEnum::Salt, None).await;
-
-        sleep(Duration::from_secs(2)).await;
+        FunctionalTester::delete_from_database(
+            postgres(),
+            TablesEnum::Salt,
+            Some(vec![("salt", &salt)]),
+        )
+        .await;
 
         FunctionalTester::delete_from_database(
             postgres(),
