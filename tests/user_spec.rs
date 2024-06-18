@@ -586,7 +586,7 @@ mod integration_tests {
         FunctionalTester::delete_from_database(
             postgres(),
             TablesEnum::Salt,
-            Some(vec![("salt", &salt)]),
+            Some(vec![("user_id", &user.id)]),
         )
         .await;
 
@@ -760,7 +760,7 @@ mod integration_tests {
         FunctionalTester::delete_from_database(
             postgres(),
             TablesEnum::Salt,
-            Some(vec![("salt", &salt)]),
+            Some(vec![("user_id", &insert_user.id)]),
         )
         .await;
         FunctionalTester::delete_from_database(
