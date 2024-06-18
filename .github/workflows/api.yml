@@ -16,6 +16,12 @@ env:
 jobs:
   build:
     runs-on: ubuntu-22.04
+    outputs:
+      POSTGRES_URL: ${{ env.POSTGRES_URL }}
+      POSTGRES_USER: ${{ env.POSTGRES_USER }}
+      POSTGRES_PASSWORD: ${{ env.POSTGRES_PASSWORD }}
+      POSTGRES_PORT: ${{env.POSTGRES_PORT}}
+      POSTGRES_NAME: ${{env.POSTGRES_NAME}}
     services:
       postgres:
         image: postgres:16.3
