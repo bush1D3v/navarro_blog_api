@@ -27,9 +27,6 @@ pub fn api_doc() -> SwaggerUi {
 		),
 		modifiers(& SecurityModifier),
 		servers((
-		    url = "http://localhost:8080",
-		    description = "Local Server",
-		), (
 		    url = "https://hub.docker.com/repository/docker/bush1d3v/navarro_blog_api",
 		    description = "Docker Image",
 		)),
