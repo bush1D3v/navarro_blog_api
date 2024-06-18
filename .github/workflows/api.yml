@@ -54,7 +54,7 @@ jobs:
 
     - name: Run migrations
       run: |
-        export DATABASE_URL=postgres://${{ vars.DB_USER }}:${{ vars.DB_PASSWORD }}@${{ vars.BASE_URL }}:${{ vars.HTTP_PORT }}/${{ vars.DB_NAME }}
+        export DATABASE_URL=${{ vars.DB_USER }}://${{ vars.DB_USER }}:${{ vars.DB_PASSWORD }}@${{ vars.DB_HOST }}:${{ vars.DB_PORT }}/${{ vars.DB_NAME }}
         diesel migration run
 
     - name: Build
