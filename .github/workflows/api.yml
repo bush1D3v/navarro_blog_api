@@ -7,11 +7,11 @@ on:
     branches: [ "master" ]
 
 env:
-  POSTGRES_URL: ${{ secrets.BASE_URL }}
-  POSTGRES_USER: ${{ secrets.DB_USER }}
-  POSTGRES_PASSWORD: ${{ secrets.DB_PASSWORD }}
-  POSTGRES_PORT: ${{ secrets.HTTP_PORT }}
-  POSTGRES_NAME: ${{ secrets.DB_NAME }}
+  POSTGRES_URL: ${{ vars.BASE_URL }}
+  POSTGRES_USER: ${{ vars.DB_USER }}
+  POSTGRES_PASSWORD: ${{ vars.DB_PASSWORD }}
+  POSTGRES_PORT: ${{ vars.HTTP_PORT }}
+  POSTGRES_NAME: ${{ vars.DB_NAME }}
 
 jobs:
   build:
@@ -54,7 +54,7 @@ jobs:
 
     - name: Run migrations
       run: |
-        export DATABASE_URL=postgres://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@${{ secrets.BASE_URL }}:${{ secrets.HTTP_PORT }}/${{ secrets.DB_NAME }}
+        export DATABASE_URL=postgres://${{ vars.DB_USER }}:${{ vars.DB_PASSWORD }}@${{ vars.BASE_URL }}:${{ vars.HTTP_PORT }}/${{ vars.DB_NAME }}
         diesel migration run
 
     - name: Build
