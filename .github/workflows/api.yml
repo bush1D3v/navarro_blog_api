@@ -1,5 +1,4 @@
 name: Navarro Blog API Build CI
-
 on:
   push:
     branches: [ "master" ]
@@ -7,24 +6,27 @@ on:
     branches: [ "master" ]
 
 env:
-  POSTGRES_URL: ${{ vars.BASE_URL }}
-  POSTGRES_USER: ${{ vars.DB_USER }}
-  POSTGRES_PASSWORD: ${{ vars.DB_PASSWORD }}
-  POSTGRES_PORT: ${{ vars.HTTP_PORT }}
-  POSTGRES_NAME: ${{ vars.DB_NAME }}
+  CARGO_TERM_COLOR: always
+  DB_HOST: ${{vars.DB_HOST}}
+  DB_PORT: ${{vars.DB_PORT}}
+  DB_NAME: ${{vars.DB_NAME}}
+  DB_USER: ${{vars.DB_USER}}
+  DB_PASSWORD: ${{vars.DB_PASSWORD}}
+  REDIS_HOST: ${{vars.REDIS_HOST}}
+  REDIS_PORT: ${{vars.REDIS_PORT}}
+  POOL_SIZE: ${{vars.POOL_SIZE}}
 
 jobs:
   build:
     runs-on: ubuntu-22.04
+
     services:
       postgres:
         image: postgres:16.3
         env:
-          POSTGRES_URL: ${{ env.POSTGRES_URL }}
-          POSTGRES_USER: ${{ env.POSTGRES_USER }}
-          POSTGRES_PASSWORD: ${{ env.POSTGRES_PASSWORD }}
-          POSTGRES_PORT: ${{env.POSTGRES_PORT}}
-          POSTGRES_NAME: ${{env.POSTGRES_NAME}}
+          POSTGRES_DB: ${{ env.DB_NAME }}
+          POSTGRES_USER: ${{ env.DB_USER }}
+          POSTGRES_PASSWORD: ${{ env.DB_PASSWORD }}
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -54,11 +56,14 @@ jobs:
 
     - name: Run migrations
       run: |
-        export DATABASE_URL=${{ vars.DB_USER }}://${{ vars.DB_USER }}:${{ vars.DB_PASSWORD }}@${{ vars.DB_HOST }}:${{ vars.DB_PORT }}/${{ vars.DB_NAME }}
+        export DATABASE_URL=postgres://${{ env.DB_USER }}:${{ env.DB_PASSWORD }}@localhost:${{ env.DB_PORT }}/${{ env.DB_NAME }}
         diesel migration run
 
     - name: Build
       run: cargo build --verbose
+
+    - name: Run tests
+      run: cargo test -- --test-threads=1
 
     - name: Run tests
       run: cargo test -- --test-threads=1
