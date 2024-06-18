@@ -589,6 +589,9 @@ mod integration_tests {
             Some(vec![("salt", &salt)]),
         )
         .await;
+
+        sleep(Duration::from_secs(2)).await;
+
         FunctionalTester::delete_from_database(
             postgres(),
             TablesEnum::Users,
