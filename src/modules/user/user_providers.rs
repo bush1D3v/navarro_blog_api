@@ -14,7 +14,7 @@ pub async fn email_exists(pool: Data<Pool>, email: String) -> Result<(), std::io
         Ok(x) => x,
         Err(e) => {
             return Err(std::io::Error::new(
-                custom_error_to_io_error_kind(CustomError::PoolError(&e)),
+                custom_error_to_io_error_kind(CustomError::PoolError),
                 e,
             ))
         }
@@ -23,7 +23,7 @@ pub async fn email_exists(pool: Data<Pool>, email: String) -> Result<(), std::io
         Ok(x) => x,
         Err(e) => {
             return Err(std::io::Error::new(
-                custom_error_to_io_error_kind(CustomError::TokioPostgres(&e)),
+                custom_error_to_io_error_kind(CustomError::TokioPostgres),
                 e,
             ))
         }
@@ -32,7 +32,7 @@ pub async fn email_exists(pool: Data<Pool>, email: String) -> Result<(), std::io
         Ok(x) => x,
         Err(e) => {
             return Err(std::io::Error::new(
-                custom_error_to_io_error_kind(CustomError::AnyhowError(&e)),
+                custom_error_to_io_error_kind(CustomError::AnyhowError),
                 e,
             ))
         }
@@ -42,7 +42,7 @@ pub async fn email_exists(pool: Data<Pool>, email: String) -> Result<(), std::io
         Ok(x) => x,
         Err(e) => {
             return Err(std::io::Error::new(
-                custom_error_to_io_error_kind(CustomError::TokioPostgres(&e)),
+                custom_error_to_io_error_kind(CustomError::TokioPostgres),
                 e,
             ))
         }
@@ -51,7 +51,7 @@ pub async fn email_exists(pool: Data<Pool>, email: String) -> Result<(), std::io
         Ok(_) => (),
         Err(e) => {
             return Err(std::io::Error::new(
-                custom_error_to_io_error_kind(CustomError::TokioPostgres(&e)),
+                custom_error_to_io_error_kind(CustomError::TokioPostgres),
                 e,
             ))
         }
@@ -74,7 +74,7 @@ pub async fn email_not_exists(pool: Data<Pool>, email: String) -> Result<(), std
         Ok(x) => x,
         Err(e) => {
             return Err(std::io::Error::new(
-                custom_error_to_io_error_kind(CustomError::PoolError(&e)),
+                custom_error_to_io_error_kind(CustomError::PoolError),
                 e,
             ))
         }
@@ -83,7 +83,7 @@ pub async fn email_not_exists(pool: Data<Pool>, email: String) -> Result<(), std
         Ok(x) => x,
         Err(e) => {
             return Err(std::io::Error::new(
-                custom_error_to_io_error_kind(CustomError::TokioPostgres(&e)),
+                custom_error_to_io_error_kind(CustomError::TokioPostgres),
                 e,
             ))
         }
@@ -92,7 +92,7 @@ pub async fn email_not_exists(pool: Data<Pool>, email: String) -> Result<(), std
         Ok(x) => x,
         Err(e) => {
             return Err(std::io::Error::new(
-                custom_error_to_io_error_kind(CustomError::AnyhowError(&e)),
+                custom_error_to_io_error_kind(CustomError::AnyhowError),
                 e,
             ))
         }
@@ -102,7 +102,7 @@ pub async fn email_not_exists(pool: Data<Pool>, email: String) -> Result<(), std
         Ok(x) => x,
         Err(e) => {
             return Err(std::io::Error::new(
-                custom_error_to_io_error_kind(CustomError::TokioPostgres(&e)),
+                custom_error_to_io_error_kind(CustomError::TokioPostgres),
                 e,
             ))
         }
@@ -111,7 +111,7 @@ pub async fn email_not_exists(pool: Data<Pool>, email: String) -> Result<(), std
         Ok(_) => (),
         Err(e) => {
             return Err(std::io::Error::new(
-                custom_error_to_io_error_kind(CustomError::TokioPostgres(&e)),
+                custom_error_to_io_error_kind(CustomError::TokioPostgres),
                 e,
             ))
         }
