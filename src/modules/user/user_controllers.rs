@@ -121,26 +121,22 @@ async fn insert_user(
 
             let id = uuid::Uuid::new_v4().to_string();
             match insert_user_service(queue.clone(), pg_pool, body, id.clone()).await {
-                Ok(dto) => {
-                    match serde_json::to_string(&dto) {
-                        Ok(string_dto) => {
-                            let _ = Redis::set_redis(&redis_pool, &id, &string_dto).await;
-                            return HttpResponse::Created()
-                                .append_header(("location", format!("/user/{id}")))
-                                .finish();
-                        }
-                        Err(e) => {
-                            return HttpResponse::InternalServerError().json(error_construct(
-                                String::from("server"),
-                                String::from("internal server error"),
-                                e.to_string(),
-                                None,
-                                None,
-                                None,
-                            ));
-                        }
-                    };
-                }
+                Ok(dto) => match serde_json::to_string(&dto) {
+                    Ok(string_dto) => {
+                        let _ = Redis::set_redis(&redis_pool, &id, &string_dto).await;
+                        HttpResponse::Created()
+                            .append_header(("location", format!("/user/{id}")))
+                            .finish()
+                    }
+                    Err(e) => HttpResponse::InternalServerError().json(error_construct(
+                        String::from("server"),
+                        String::from("internal server error"),
+                        e.to_string(),
+                        None,
+                        None,
+                        None,
+                    )),
+                },
                 Err(e) => match e.kind() {
                     ErrorKind::InvalidInput => {
                         HttpResponse::InternalServerError().json(error_construct(
