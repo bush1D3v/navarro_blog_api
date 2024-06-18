@@ -20,6 +20,12 @@ jobs:
     services:
       postgres:
         image: postgres:16.3
+        env:
+          POSTGRES_URL: ${{ env.POSTGRES_URL }}
+          POSTGRES_USER: ${{ env.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ env.POSTGRES_PASSWORD }}
+          POSTGRES_PORT: ${{env.POSTGRES_PORT}}
+          POSTGRES_NAME: ${{env.POSTGRES_NAME}}
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
