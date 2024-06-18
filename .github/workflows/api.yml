@@ -6,17 +6,16 @@ on:
   pull_request:
     branches: [ "master" ]
 
+env:
+  POSTGRES_URL: ${{ secrets.BASE_URL }}
+  POSTGRES_USER: ${{ secrets.DB_USER }}
+  POSTGRES_PASSWORD: ${{ secrets.DB_PASSWORD }}
+  POSTGRES_PORT: ${{ secrets.HTTP_PORT }}
+  POSTGRES_NAME: ${{ secrets.DB_NAME }}
+
 jobs:
   build:
     runs-on: ubuntu-22.04
-
-    env:
-      POSTGRES_URL: ${{ secrets.BASE_URL }}
-      POSTGRES_USER: ${{ secrets.DB_USER }}
-      POSTGRES_PASSWORD: ${{ secrets.DB_PASSWORD }}
-      POSTGRES_PORT: ${{ secrets.HTTP_PORT }}
-      POSTGRES_NAME: ${{ secrets.DB_NAME }}
-
     services:
       postgres:
         image: postgres:16.3
