@@ -4,6 +4,10 @@ on:
     branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
+  workflow_run:
+    workflows: [Run Tests]
+    types:
+      - completed
 
 env:
   CARGO_TERM_COLOR: always
