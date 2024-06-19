@@ -1,9 +1,9 @@
 name: Navarro Blog API Build CI
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ "master" ]
+    branches: [ "main" ]
   workflow_run:
     workflows: [Run Tests]
     types:
