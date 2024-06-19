@@ -5,7 +5,7 @@ on:
   pull_request:
     branches: [ "main" ]
   workflow_run:
-    workflows: [Run Tests]
+    workflows: [ Run Tests ]
     types:
       - completed
 
@@ -19,6 +19,8 @@ env:
   REDIS_HOST: ${{vars.REDIS_HOST}}
   REDIS_PORT: ${{vars.REDIS_PORT}}
   POOL_SIZE: ${{vars.POOL_SIZE}}
+  JWT_KEY: ${{secrets.JWT_KEY}}
+  JWT_KEY2: ${{secrets.JWT_KEY2}}
 
 jobs:
   build:
