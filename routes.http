@@ -37,6 +37,12 @@ GET BASE_URL:HTTP_PORT/user/:id
 Content-Type: application/json
 Authorization: Bearer Token
 
+### User list
+
+GET BASE_URL:HTTP_PORT/user
+Content-Type: application/json
+Authorization: Bearer Token
+
 ### Update user
 
 PATCH BASE_URL:HTTP_PORT/user/:id
