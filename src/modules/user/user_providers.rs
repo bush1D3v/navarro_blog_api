@@ -119,7 +119,7 @@ pub async fn email_not_exists(pool: Data<Pool>, email: String) -> Result<(), std
     if rows.is_empty() {
         return Err(std::io::Error::new(
             std::io::ErrorKind::NotFound,
-            "Não foi encontrado um usuário com este email.",
+            "Não foi encontrado um usuário com este e-mail.",
         ));
     }
     Ok(())
