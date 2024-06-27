@@ -77,38 +77,36 @@ pub async fn insert_user_service(
 
     match insert_user_repository(queue.clone(), pg_pool, body, user_id.clone(), user_salt).await {
         Ok(user) => Ok(InsertUserServiceResponse { user, user_id }),
-        Err(e) => {
-            return match e.kind() {
-                ErrorKind::InvalidInput => {
-                    Err(HttpResponse::InternalServerError().json(error_construct(
-                        String::from("bcrypt"),
-                        String::from("internal server error"),
-                        e.to_string(),
-                        None,
-                        None,
-                        None,
-                    )))
-                }
-                ErrorKind::ConnectionAborted => {
-                    Err(HttpResponse::ServiceUnavailable().json(error_construct(
-                        String::from("database"),
-                        String::from("service unavailable"),
-                        e.to_string(),
-                        None,
-                        None,
-                        None,
-                    )))
-                }
-                _ => Err(HttpResponse::InternalServerError().json(error_construct(
-                    String::from("server"),
+        Err(e) => match e.kind() {
+            ErrorKind::InvalidInput => {
+                Err(HttpResponse::InternalServerError().json(error_construct(
+                    String::from("bcrypt"),
                     String::from("internal server error"),
                     e.to_string(),
                     None,
                     None,
                     None,
-                ))),
+                )))
             }
-        }
+            ErrorKind::ConnectionAborted => {
+                Err(HttpResponse::ServiceUnavailable().json(error_construct(
+                    String::from("database"),
+                    String::from("service unavailable"),
+                    e.to_string(),
+                    None,
+                    None,
+                    None,
+                )))
+            }
+            _ => Err(HttpResponse::InternalServerError().json(error_construct(
+                String::from("server"),
+                String::from("internal server error"),
+                e.to_string(),
+                None,
+                None,
+                None,
+            ))),
+        },
     }
 }
 
