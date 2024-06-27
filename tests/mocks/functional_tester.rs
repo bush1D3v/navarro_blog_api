@@ -1,7 +1,6 @@
 use super::{enums::db_table::TablesEnum, models::user::complete_user_model};
-use deadpool_postgres::Pool;
 use navarro_blog_api::modules::user::user_dtos::UserDTO;
-use sql_builder::prelude::*;
+use sql_builder::{quote, SqlBuilder};
 
 pub struct FunctionalTester {
     db_table: String,
@@ -34,11 +33,12 @@ impl FunctionalTester {
     }
 
     pub async fn delete_from_database(
-        pool: Pool,
+        pg_pool: deadpool_postgres::Pool,
+        redis_pool: deadpool_redis::Pool,
         db_table: TablesEnum,
         conditions: Option<Vec<(&str, &str)>>,
     ) {
-        let client = pool.get().await.unwrap();
+        let client = pg_pool.get().await.unwrap();
         let mut sql = SqlBuilder::delete_from(FunctionalTester::construct_table(db_table).db_table);
 
         if let Some(conditions) = conditions {
@@ -57,14 +57,20 @@ impl FunctionalTester {
 
         client.prepare(&stmt).await.unwrap();
         client.execute(&stmt, &[]).await.unwrap();
+
+        let mut redis_conn: deadpool_redis::Connection = redis_pool.get().await.unwrap();
+        let _: () = deadpool_redis::redis::cmd("FLUSHDB")
+            .query_async(&mut redis_conn)
+            .await
+            .unwrap();
     }
 
     pub async fn can_see_in_database(
-        pool: Pool,
+        pg_pool: deadpool_postgres::Pool,
         db_table: TablesEnum,
         conditions: Option<Vec<(&str, &str)>>,
     ) -> bool {
-        let client = pool.get().await.unwrap();
+        let client = pg_pool.get().await.unwrap();
 
         let mut sql = SqlBuilder::select_from(FunctionalTester::construct_table(db_table).db_table);
 
@@ -91,11 +97,11 @@ impl FunctionalTester {
     }
 
     pub async fn cant_see_in_database(
-        pool: Pool,
+        pg_pool: deadpool_postgres::Pool,
         db_table: TablesEnum,
         conditions: Option<Vec<(&str, &str)>>,
     ) -> bool {
-        let client = pool.get().await.unwrap();
+        let client = pg_pool.get().await.unwrap();
 
         let mut sql = SqlBuilder::select_from(FunctionalTester::construct_table(db_table).db_table);
 
@@ -121,8 +127,12 @@ impl FunctionalTester {
         rows.is_empty()
     }
 
-    pub async fn insert_in_db_salt(pool: Pool, user_id: String, salt: String) -> String {
-        let client = pool.get().await.unwrap();
+    pub async fn insert_in_db_salt(
+        pg_pool: deadpool_postgres::Pool,
+        user_id: String,
+        salt: String,
+    ) -> String {
+        let client = pg_pool.get().await.unwrap();
 
         let user_id2 = uuid::Uuid::parse_str(&user_id).unwrap();
         let salt2 = uuid::Uuid::parse_str(&salt).unwrap();
@@ -142,14 +152,17 @@ impl FunctionalTester {
         salt
     }
 
-    pub async fn get_salt_from_db(pool: Pool) -> String {
-        let client = pool.get().await.unwrap();
+    pub async fn get_salt_from_db(pg_pool: deadpool_postgres::Pool) -> String {
+        let client = pg_pool.get().await.unwrap();
         let stmt = client.prepare("SELECT salt FROM salt").await.unwrap();
         let rows = client.query(&stmt, &[]).await.unwrap();
         rows[0].get("salt")
     }
 
-    pub async fn insert_in_db_users(pool: Pool, user_body: UserDTO) -> UserDTO {
+    pub async fn insert_in_db_users(
+        pg_pool: deadpool_postgres::Pool,
+        user_body: UserDTO,
+    ) -> UserDTO {
         let mut pg_user = UserDTO {
             id: user_body.id.clone(),
             name: user_body.name.clone(),
@@ -174,7 +187,7 @@ impl FunctionalTester {
             pg_user.created_at = complete_user_model().created_at;
         }
 
-        let client = pool.get().await.unwrap();
+        let client = pg_pool.get().await.unwrap();
 
         let stmt = client
             .prepare(
