@@ -1,21 +1,23 @@
+use crate::{
+    modules::user::{
+        user_controllers::{
+            DetailUserControllerResponse, LoginUserControllerResponse, __path_detail_user,
+            __path_insert_user, __path_login_user,
+        },
+        user_dtos::{CreateUserDTO, DetailUserDTO, LoginUserDTO},
+    },
+    shared::structs::error_struct::{ErrorParams, ErrorStruct},
+};
 use utoipa::{
     openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme},
     Modify, OpenApi,
 };
 use utoipa_swagger_ui::SwaggerUi;
 
-use crate::{
-    modules::user::{
-        user_controllers::{LoginUserControllerResponse, __path_insert_user, __path_login_user},
-        user_dtos::{CreateUserDTO, LoginUserDTO},
-    },
-    shared::structs::error_struct::{ErrorParams, ErrorStruct},
-};
-
 pub fn api_doc() -> SwaggerUi {
     #[derive(OpenApi)]
     #[openapi(
-		paths(insert_user, login_user),
+		paths(insert_user, login_user, detail_user),
 		components(
 			schemas(
 				CreateUserDTO,
@@ -23,6 +25,8 @@ pub fn api_doc() -> SwaggerUi {
 				LoginUserControllerResponse,
 				ErrorStruct,
 				ErrorParams,
+                DetailUserControllerResponse,
+                DetailUserDTO,
 			)
 		),
 		modifiers(& SecurityModifier),
@@ -59,5 +63,5 @@ pub fn api_doc() -> SwaggerUi {
         }
     }
 
-    SwaggerUi::new("/{_:.*}").url("/api-docs/openapi.json", ApiDoc::openapi())
+    SwaggerUi::new("{_:.*}").url("/api-docs/openapi.json", ApiDoc::openapi())
 }
