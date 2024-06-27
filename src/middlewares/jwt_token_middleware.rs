@@ -32,7 +32,7 @@ pub fn jwt_token_middleware(headers: &HeaderMap) -> Result<(), HttpResponse> {
     };
 
     match jsonwebtoken::decode::<Claims>(
-        &token,
+        token,
         &jsonwebtoken::DecodingKey::from_secret(std::env::var("JWT_ACCESS_KEY").unwrap().as_ref()),
         &jsonwebtoken::Validation::default(),
     ) {
