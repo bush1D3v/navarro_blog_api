@@ -1,5 +1,7 @@
 use bcrypt::hash;
-use navarro_blog_api::modules::user::user_dtos::{CreateUserDTO, LoginUserDTO, UserDTO};
+use navarro_blog_api::modules::user::user_dtos::{
+    CreateUserDTO, DetailUserDTO, LoginUserDTO, UserDTO,
+};
 
 pub fn complete_user_model() -> UserDTO {
     UserDTO {
@@ -41,5 +43,14 @@ pub fn login_user_model() -> LoginUserDTO {
     LoginUserDTO {
         email: String::from("bush1d3v@gmail.com"),
         password: String::from("12345678%"),
+    }
+}
+
+pub fn detail_user_model() -> DetailUserDTO {
+    DetailUserDTO {
+        id: uuid::Uuid::new_v4().to_string(),
+        email: String::from("bush1d3v@gmail.com"),
+        name: String::from("Victor Navarro"),
+        created_at: chrono::Utc::now().to_string(),
     }
 }
