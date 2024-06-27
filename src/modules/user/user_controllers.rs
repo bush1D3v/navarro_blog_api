@@ -98,16 +98,14 @@ async fn insert_user(
         Ok(_) => {
             match Redis::get_redis(&redis_pool, format!("a/{}", body.email.clone()).as_str()).await
             {
-                Ok(_) => {
-                    return HttpResponse::Conflict().json(error_construct(
-                        String::from("email"),
-                        String::from("conflict"),
-                        String::from("Este e-mail já está sendo utilizado por outro usuário."),
-                        Some(body.email.clone()),
-                        None,
-                        None,
-                    ));
-                }
+                Ok(_) => HttpResponse::Conflict().json(error_construct(
+                    String::from("email"),
+                    String::from("conflict"),
+                    String::from("Este e-mail já está sendo utilizado por outro usuário."),
+                    Some(body.email.clone()),
+                    None,
+                    None,
+                )),
                 Err(_) => match insert_user_service(queue.clone(), pg_pool, body).await {
                     Ok(response) => match UserSerdes::serde_json_to_string(&response.user) {
                         Ok(string_user) => {
@@ -363,18 +361,21 @@ async fn detail_user(
         Ok(user_id) => user_id,
         Err(e) => return e,
     };
-    return match Redis::get_redis(&redis_pool, &user_id).await {
-        Ok(redis_user) => HttpResponse::Ok().json(DetailUserControllerResponse {
-            user: match UserSerdes::serde_string_to_json(&redis_user) {
-                Ok(user) => DetailUserDTO {
-                    id: user.id,
-                    name: user.name,
-                    email: user.email,
-                    created_at: user.created_at,
-                },
-                Err(e) => return e,
-            },
-        }),
+    match Redis::get_redis(&redis_pool, &user_id).await {
+        Ok(redis_user) => {
+            return match UserSerdes::serde_string_to_json(&redis_user) {
+                Ok(user) => {
+                    let user = DetailUserDTO {
+                        id: user.id,
+                        name: user.name,
+                        email: user.email,
+                        created_at: user.created_at,
+                    };
+                    return HttpResponse::Ok().json(DetailUserControllerResponse { user });
+                }
+                Err(e) => e,
+            }
+        }
         Err(_) => {
             match detail_user_service(pg_pool, user_id.clone()).await {
                 Ok(pg_user) => match UserSerdes::serde_json_to_string(&pg_user) {
