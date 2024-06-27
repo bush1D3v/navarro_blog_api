@@ -32,8 +32,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             .app_data(web::Data::new(pool.clone()))
             .app_data(web::Data::new(redis_pool.clone()))
             .app_data(web::Data::new(queue.clone()))
-            .service(api_doc())
             .service(user_controllers_module())
+            .service(api_doc())
     })
     .keep_alive(KeepAlive::Os)
     .bind((
