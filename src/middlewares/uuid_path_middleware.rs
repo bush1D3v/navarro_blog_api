@@ -17,7 +17,7 @@ pub fn uuid_path_middleware(
                     "Por favor, envie um valor para {} na URL da requisição.",
                     path_name
                 ),
-                Some(String::from(id.to_string())),
+                Some(id.to_string()),
                 None,
                 None,
             )))
