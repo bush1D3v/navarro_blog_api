@@ -65,7 +65,7 @@ pub async fn get_user_salt_repository(
         }
     };
 
-    if rows.len() == 0 {
+    if rows.is_empty() {
         return Err(std::io::Error::new(
             custom_error_to_io_error_kind(CustomError::AnyhowError),
             "Erro inesperado do servidor, tente novamente mais tarde.",
@@ -163,7 +163,7 @@ pub async fn login_user_repository(
         }
     };
 
-    if rows.len() == 0 {
+    if rows.is_empty() {
         return Err(std::io::Error::new(
             ErrorKind::NotFound,
             "Não foi encontrado um usuário com este e-mail.",
@@ -229,7 +229,7 @@ pub async fn detail_user_repository(
         }
     };
 
-    if rows.len() == 0 {
+    if rows.is_empty() {
         return Err(std::io::Error::new(
             ErrorKind::NotFound,
             "Não foi encontrado um usuário com este id.",
