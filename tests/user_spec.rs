@@ -1,21 +1,26 @@
 pub mod mocks;
 
 #[cfg(test)]
-mod unitary_test {
+mod unitary_specs {
     use crate::mocks::{
         enums::db_table::TablesEnum,
         functional_tester::FunctionalTester,
-        models::user::{
-            complete_user_model, complete_user_model_hashed, login_user_model, simple_user_model,
+        models::{
+            postgres::postgres_error,
+            user::{
+                complete_user_model, complete_user_model_hashed, login_user_model,
+                simple_user_model,
+            },
         },
     };
-    use actix_web::{test, web};
+    use actix_web::{body, test, web};
     use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
     use navarro_blog_api::{
-        infra::postgres::postgres, modules::user::user_queues::CreateUserAppQueue,
+        infra::{postgres::postgres, redis::Redis},
+        modules::user::user_queues::CreateUserAppQueue,
         shared::structs::jwt_claims::Claims,
     };
-    use std::sync::Arc;
+    use std::{io::ErrorKind, sync::Arc};
 
     #[test]
     async fn _insert_user_service() {
@@ -23,19 +28,18 @@ mod unitary_test {
         use navarro_blog_api::modules::user::user_services::insert_user_service;
 
         let queue = Arc::new(CreateUserAppQueue::new());
-        let user = complete_user_model();
+        let user = simple_user_model();
 
-        let response = insert_user_service(
+        let resp = insert_user_service(
             web::Data::new(queue.clone()),
             web::Data::new(postgres()),
-            web::Json(simple_user_model()),
-            user.id.clone(),
+            web::Json(user.clone()),
         )
         .await
         .unwrap();
 
-        let response_password = response.password.clone();
-        let password_without_salt = response_password
+        let resp_password = resp.user.password.clone();
+        let password_without_salt = resp_password
             .chars()
             .collect::<Vec<char>>()
             .into_iter()
@@ -44,11 +48,109 @@ mod unitary_test {
             .rev()
             .collect::<String>();
 
-        assert_eq!(response.id, user.id);
-        assert_eq!(response.name, user.name);
-        assert_eq!(response.email, user.email);
+        assert_eq!(resp.user.name, user.name);
+        assert_eq!(resp.user.email, user.email);
         assert!(bcrypt::verify(&user.password, &password_without_salt).unwrap());
-        assert!(response
+        assert!(!resp.user_id.is_empty());
+        assert!(!resp.user.created_at.is_empty());
+    }
+
+    #[test]
+    async fn _insert_user_service_conflict_error() {
+        dotenv::dotenv().ok();
+        use navarro_blog_api::modules::user::user_services::insert_user_service;
+
+        let queue = Arc::new(CreateUserAppQueue::new());
+        let user = simple_user_model();
+
+        FunctionalTester::insert_in_db_users(postgres(), complete_user_model_hashed()).await;
+
+        let resp = insert_user_service(
+            web::Data::new(queue.clone()),
+            web::Data::new(postgres()),
+            web::Json(user.clone()),
+        )
+        .await
+        .err()
+        .unwrap();
+        assert_eq!(resp.status(), 409);
+
+        let bytes =
+            String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
+
+        assert!(bytes.contains("email"));
+        assert!(bytes.contains("conflict"));
+        assert!(bytes.contains("Este e-mail já está sendo utilizado por outro usuário."));
+        assert!(bytes.contains(format!("{}", user.email).as_str()));
+
+        FunctionalTester::delete_from_database(
+            postgres(),
+            Redis::pool().await,
+            TablesEnum::Users,
+            Some(vec![("email", &user.email)]),
+        )
+        .await;
+    }
+
+    #[test]
+    async fn _insert_user_service_service_unavailable_error() {
+        dotenv::dotenv().ok();
+        use navarro_blog_api::modules::user::user_services::insert_user_service;
+
+        let queue = Arc::new(CreateUserAppQueue::new());
+        let user = simple_user_model();
+
+        FunctionalTester::insert_in_db_users(postgres(), complete_user_model_hashed()).await;
+
+        let resp = insert_user_service(
+            web::Data::new(queue.clone()),
+            web::Data::new(postgres_error()),
+            web::Json(user.clone()),
+        )
+        .await
+        .err()
+        .unwrap();
+        assert_eq!(resp.status(), 503);
+
+        let bytes =
+            String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
+
+        assert!(bytes.contains("database"));
+        assert!(bytes.contains("service unavailable"));
+
+        FunctionalTester::delete_from_database(
+            postgres(),
+            Redis::pool().await,
+            TablesEnum::Users,
+            Some(vec![("email", &user.email)]),
+        )
+        .await;
+    }
+
+    #[test]
+    async fn _insert_user_repository() {
+        dotenv::dotenv().ok();
+        use navarro_blog_api::modules::user::user_repositories::insert_user_repository;
+
+        let queue = Arc::new(CreateUserAppQueue::new());
+
+        let user = complete_user_model();
+
+        let resp = insert_user_repository(
+            web::Data::new(queue.clone()),
+            web::Data::new(postgres()),
+            web::Json(simple_user_model()),
+            user.id.clone(),
+            uuid::Uuid::new_v4().to_string(),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(resp.id, user.id);
+        assert_eq!(resp.name, user.name);
+        assert_eq!(resp.email, user.email);
+        assert_eq!(resp.password, user.password);
+        assert!(resp
             .created_at
             .contains(&user.created_at.chars().take(10).collect::<String>()));
     }
@@ -68,22 +170,27 @@ mod unitary_test {
 
         let login_user = login_user_model();
 
-        let response =
-            login_user_service(web::Json(login_user.clone()), web::Data::new(postgres()))
-                .await
-                .unwrap();
+        let resp = login_user_service(
+            web::Json(login_user.clone()),
+            web::Data::new(postgres()),
+            false,
+        )
+        .await
+        .unwrap();
 
+        assert_eq!(resp.access_expires_in, 60 * 30);
+        assert_eq!(resp.refresh_expires_in, 60 * 60 * 24 * 7);
         let token_data = decode::<Claims>(
-            &response.refresh_token,
-            &DecodingKey::from_secret(std::env::var("JWT_KEY").unwrap().as_ref()),
+            &resp.refresh_token,
+            &DecodingKey::from_secret(std::env::var("JWT_REFRESH_KEY").unwrap().as_ref()),
             &Validation::new(Algorithm::HS256),
         )
         .unwrap();
         assert_eq!(token_data.claims.sub, user.id);
 
         let token_data = decode::<Claims>(
-            &response.access_token,
-            &DecodingKey::from_secret(std::env::var("JWT_KEY2").unwrap().as_ref()),
+            &resp.access_token,
+            &DecodingKey::from_secret(std::env::var("JWT_ACCESS_KEY").unwrap().as_ref()),
             &Validation::new(Algorithm::HS256),
         )
         .unwrap();
@@ -91,12 +198,14 @@ mod unitary_test {
 
         FunctionalTester::delete_from_database(
             postgres(),
+            Redis::pool().await,
             TablesEnum::Salt,
             Some(vec![("user_id", &user.id)]),
         )
         .await;
         FunctionalTester::delete_from_database(
             postgres(),
+            Redis::pool().await,
             TablesEnum::Users,
             Some(vec![("email", &user.email)]),
         )
@@ -104,31 +213,118 @@ mod unitary_test {
     }
 
     #[test]
-    async fn _insert_user_repository() {
+    async fn _login_user_service_error_not_found() {
         dotenv::dotenv().ok();
-        use navarro_blog_api::modules::user::user_repositories::insert_user_repository;
+        use navarro_blog_api::modules::user::user_services::login_user_service;
 
-        let queue = Arc::new(CreateUserAppQueue::new());
-
-        let user = complete_user_model();
-
-        let response = insert_user_repository(
-            web::Data::new(queue.clone()),
+        let resp = login_user_service(
+            web::Json(login_user_model()),
             web::Data::new(postgres()),
-            web::Json(simple_user_model()),
-            user.id.clone(),
-            uuid::Uuid::new_v4().to_string(),
+            false,
         )
         .await
+        .err()
         .unwrap();
+        assert_eq!(resp.status(), 404);
 
-        assert_eq!(response.id, user.id);
-        assert_eq!(response.name, user.name);
-        assert_eq!(response.email, user.email);
-        assert_eq!(response.password, user.password);
-        assert!(response
-            .created_at
-            .contains(&user.created_at.chars().take(10).collect::<String>()));
+        let bytes =
+            String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
+
+        assert!(bytes.contains("email"));
+        assert!(bytes.contains("not found"));
+        assert!(bytes.contains("Não foi encontrado um usuário com este e-mail."));
+    }
+
+    #[test]
+    async fn _login_user_service_error_unauthorized() {
+        dotenv::dotenv().ok();
+        use navarro_blog_api::modules::user::user_services::login_user_service;
+
+        let mut user = complete_user_model_hashed();
+
+        let salt = uuid::Uuid::new_v4().to_string();
+        user.password = format!("{}{}", user.password, salt);
+        FunctionalTester::insert_in_db_users(postgres(), user.clone()).await;
+
+        FunctionalTester::insert_in_db_salt(postgres(), user.id.clone(), salt).await;
+
+        let mut login_user = login_user_model();
+        login_user.password = String::from("teste");
+
+        let resp = login_user_service(web::Json(login_user), web::Data::new(postgres()), false)
+            .await
+            .err()
+            .unwrap();
+        assert_eq!(resp.status(), 401);
+
+        let bytes =
+            String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
+
+        assert!(bytes.contains("email/password"));
+        assert!(bytes.contains("unauthorized"));
+        assert!(bytes.contains("E-mail e/ou senha incorretos."));
+
+        FunctionalTester::delete_from_database(
+            postgres(),
+            Redis::pool().await,
+            TablesEnum::Salt,
+            Some(vec![("user_id", &user.id)]),
+        )
+        .await;
+        FunctionalTester::delete_from_database(
+            postgres(),
+            Redis::pool().await,
+            TablesEnum::Users,
+            Some(vec![("email", &user.email)]),
+        )
+        .await;
+    }
+
+    #[test]
+    async fn _login_user_service_error_service_unavailable() {
+        dotenv::dotenv().ok();
+        use navarro_blog_api::modules::user::user_services::login_user_service;
+
+        let mut user = complete_user_model_hashed();
+
+        let salt = uuid::Uuid::new_v4().to_string();
+        user.password = format!("{}{}", user.password, salt);
+        FunctionalTester::insert_in_db_users(postgres(), user.clone()).await;
+
+        FunctionalTester::insert_in_db_salt(postgres(), user.id.clone(), salt).await;
+
+        let login_user = login_user_model();
+
+        let resp = login_user_service(
+            web::Json(login_user.clone()),
+            web::Data::new(postgres_error()),
+            false,
+        )
+        .await
+        .err()
+        .unwrap();
+        assert_eq!(resp.status(), 503);
+
+        let bytes =
+            String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
+
+        assert!(bytes.contains("database"));
+        assert!(bytes.contains("service unavailable"));
+
+        FunctionalTester::delete_from_database(
+            postgres(),
+            Redis::pool().await,
+            TablesEnum::Salt,
+            Some(vec![("user_id", &user.id)]),
+        )
+        .await;
+        FunctionalTester::delete_from_database(
+            postgres(),
+            Redis::pool().await,
+            TablesEnum::Users,
+            Some(vec![("email", &user.email)]),
+        )
+        .await;
     }
 
     #[test]
@@ -140,12 +336,12 @@ mod unitary_test {
 
         FunctionalTester::insert_in_db_users(postgres(), user.clone()).await;
 
-        let response = login_user_repository(user.email.clone(), web::Data::new(postgres()))
+        let resp = login_user_repository(user.email.clone(), web::Data::new(postgres()))
             .await
             .unwrap();
 
-        assert_eq!(response.id, user.id);
-        assert_eq!(response.password, user.password);
+        assert_eq!(resp.id, user.id);
+        assert_eq!(resp.password, user.password);
 
         assert!(
             FunctionalTester::can_see_in_database(
@@ -158,10 +354,208 @@ mod unitary_test {
 
         FunctionalTester::delete_from_database(
             postgres(),
+            Redis::pool().await,
             TablesEnum::Users,
             Some(vec![("email", &user.email)]),
         )
         .await;
+    }
+
+    #[test]
+    async fn _login_user_repository_error_not_found() {
+        dotenv::dotenv().ok();
+        use navarro_blog_api::modules::user::user_repositories::login_user_repository;
+
+        let user = complete_user_model();
+
+        let resp = login_user_repository(user.email.clone(), web::Data::new(postgres()))
+            .await
+            .err()
+            .unwrap();
+
+        assert_eq!(resp.kind(), ErrorKind::NotFound);
+        assert_eq!(
+            resp.to_string(),
+            "Não foi encontrado um usuário com este e-mail."
+        );
+
+        assert!(
+            FunctionalTester::cant_see_in_database(
+                postgres(),
+                TablesEnum::Users,
+                Some(vec![("email", &user.email)])
+            )
+            .await
+        );
+    }
+
+    #[test]
+    async fn _login_user_repository_error_service_unavailable() {
+        dotenv::dotenv().ok();
+        use navarro_blog_api::modules::user::user_repositories::login_user_repository;
+
+        let user = complete_user_model();
+
+        let resp = login_user_repository(user.email.clone(), web::Data::new(postgres_error()))
+            .await
+            .err()
+            .unwrap();
+
+        assert_eq!(resp.kind(), ErrorKind::ConnectionAborted);
+
+        assert!(
+            FunctionalTester::cant_see_in_database(
+                postgres(),
+                TablesEnum::Users,
+                Some(vec![("email", &user.email)])
+            )
+            .await
+        );
+    }
+
+    #[test]
+    async fn _detail_user_service() {
+        dotenv::dotenv().ok();
+        use navarro_blog_api::modules::user::user_services::detail_user_service;
+
+        let user = complete_user_model_hashed();
+
+        FunctionalTester::insert_in_db_users(postgres(), user.clone()).await;
+
+        let resp = detail_user_service(web::Data::new(postgres()), user.id.clone())
+            .await
+            .unwrap();
+
+        assert!(resp.id == user.id);
+        assert!(resp.name == user.name);
+        assert!(resp.email == user.email);
+        assert!(resp.password == user.password);
+        assert!(resp
+            .created_at
+            .contains(&user.created_at.chars().take(10).collect::<String>()));
+
+        FunctionalTester::delete_from_database(
+            postgres(),
+            Redis::pool().await,
+            TablesEnum::Users,
+            Some(vec![("email", &user.email)]),
+        )
+        .await;
+    }
+
+    #[test]
+    async fn _detail_user_service_error_not_found() {
+        dotenv::dotenv().ok();
+        use navarro_blog_api::modules::user::user_services::detail_user_service;
+
+        let user = complete_user_model_hashed();
+
+        let resp = detail_user_service(web::Data::new(postgres()), user.id.clone())
+            .await
+            .err()
+            .unwrap();
+
+        assert_eq!(resp.status(), 404);
+
+        let bytes =
+            String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
+
+        assert!(bytes.contains("user"));
+        assert!(bytes.contains("not found"));
+        assert!(bytes.contains("Não foi encontrado um usuário com este id."));
+
+        FunctionalTester::cant_see_in_database(
+            postgres(),
+            TablesEnum::Users,
+            Some(vec![("email", &user.email)]),
+        )
+        .await;
+    }
+
+    #[test]
+    async fn _detail_user_service_service_unavailable() {
+        dotenv::dotenv().ok();
+        use navarro_blog_api::modules::user::user_services::detail_user_service;
+
+        let resp = detail_user_service(
+            web::Data::new(postgres_error()),
+            complete_user_model().id.clone(),
+        )
+        .await
+        .err()
+        .unwrap();
+
+        assert_eq!(resp.status(), 503);
+
+        let bytes =
+            String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
+
+        assert!(bytes.contains("database"));
+        assert!(bytes.contains("service unavailable"));
+    }
+
+    #[test]
+    async fn _detail_user_repository() {
+        dotenv::dotenv().ok();
+        use navarro_blog_api::modules::user::user_repositories::detail_user_repository;
+
+        let user = complete_user_model_hashed();
+
+        FunctionalTester::insert_in_db_users(postgres(), user.clone()).await;
+
+        let resp = detail_user_repository(web::Data::new(postgres()), user.id.clone())
+            .await
+            .unwrap();
+
+        assert!(resp.id == user.id);
+        assert!(resp.name == user.name);
+        assert!(resp.email == user.email);
+        assert!(resp.password == user.password);
+        assert!(resp
+            .created_at
+            .contains(&user.created_at.chars().take(10).collect::<String>()));
+
+        FunctionalTester::delete_from_database(
+            postgres(),
+            Redis::pool().await,
+            TablesEnum::Users,
+            Some(vec![("email", &user.email)]),
+        )
+        .await;
+    }
+
+    #[test]
+    async fn _detail_user_repository_error_not_found() {
+        dotenv::dotenv().ok();
+        use navarro_blog_api::modules::user::user_repositories::detail_user_repository;
+
+        let user = complete_user_model();
+
+        let resp = detail_user_repository(web::Data::new(postgres()), user.id.clone())
+            .await
+            .err()
+            .unwrap();
+
+        assert_eq!(resp.kind(), ErrorKind::NotFound);
+        assert_eq!(
+            resp.to_string(),
+            "Não foi encontrado um usuário com este id."
+        );
+    }
+
+    #[test]
+    async fn _detail_user_repository_error_service_unavailable() {
+        dotenv::dotenv().ok();
+        use navarro_blog_api::modules::user::user_repositories::detail_user_repository;
+
+        let user = complete_user_model();
+
+        let resp = detail_user_repository(web::Data::new(postgres_error()), user.id.clone())
+            .await
+            .err()
+            .unwrap();
+
+        assert_eq!(resp.kind(), ErrorKind::ConnectionAborted);
     }
 
     #[test]
@@ -171,20 +565,43 @@ mod unitary_test {
 
         let user = FunctionalTester::insert_in_db_users(postgres(), complete_user_model()).await;
 
-        let pool = web::Data::new(postgres());
+        let resp = email_exists(web::Data::new(postgres()), simple_user_model().email)
+            .await
+            .err()
+            .unwrap();
 
-        let response = email_exists(pool, simple_user_model().email).await;
-
-        assert!(response.is_err());
+        assert_eq!(resp.kind(), ErrorKind::InvalidInput);
         assert_eq!(
-            response.err().map(|e| e.to_string()),
-            Some(String::from(
-                "Este e-mail já está sendo utilizado por outro usuário."
-            ))
+            resp.to_string(),
+            "Este e-mail já está sendo utilizado por outro usuário."
         );
 
         FunctionalTester::delete_from_database(
             postgres(),
+            Redis::pool().await,
+            TablesEnum::Users,
+            Some(vec![("email", &user.email)]),
+        )
+        .await;
+    }
+
+    #[test]
+    async fn _email_exists_provider_service_unavailable_error() {
+        dotenv::dotenv().ok();
+        use navarro_blog_api::modules::user::user_providers::email_exists;
+
+        let user = FunctionalTester::insert_in_db_users(postgres(), complete_user_model()).await;
+
+        let resp = email_exists(web::Data::new(postgres_error()), simple_user_model().email)
+            .await
+            .err()
+            .unwrap();
+
+        assert_eq!(resp.kind(), ErrorKind::ConnectionAborted);
+
+        FunctionalTester::delete_from_database(
+            postgres(),
+            Redis::pool().await,
             TablesEnum::Users,
             Some(vec![("email", &user.email)]),
         )
@@ -196,26 +613,42 @@ mod unitary_test {
         dotenv::dotenv().ok();
         use navarro_blog_api::modules::user::user_providers::email_not_exists;
 
-        let pool = web::Data::new(postgres());
+        let user = simple_user_model();
+
+        let resp = email_not_exists(web::Data::new(postgres()), user.email.clone())
+            .await
+            .err()
+            .unwrap();
+
+        assert_eq!(resp.kind(), ErrorKind::NotFound);
+        assert_eq!(
+            resp.to_string(),
+            "Não foi encontrado um usuário com este e-mail."
+        );
+
+        assert!(
+            FunctionalTester::cant_see_in_database(
+                postgres(),
+                TablesEnum::Users,
+                Some(vec![("email", &user.email)])
+            )
+            .await
+        );
+    }
+
+    #[test]
+    async fn _email_not_exists_provider_service_unavailable_error() {
+        dotenv::dotenv().ok();
+        use navarro_blog_api::modules::user::user_providers::email_not_exists;
 
         let user = simple_user_model();
 
-        FunctionalTester::delete_from_database(
-            postgres(),
-            TablesEnum::Users,
-            Some(vec![("email", &user.email)]),
-        )
-        .await;
+        let resp = email_not_exists(web::Data::new(postgres_error()), user.email.clone())
+            .await
+            .err()
+            .unwrap();
 
-        let response = email_not_exists(pool, user.email.clone()).await;
-
-        assert!(response.is_err());
-        assert_eq!(
-            response.err().map(|e| e.to_string()),
-            Some(String::from(
-                "Não foi encontrado um usuário com este email."
-            ))
-        );
+        assert_eq!(resp.kind(), ErrorKind::ConnectionAborted);
 
         assert!(
             FunctionalTester::cant_see_in_database(
@@ -229,13 +662,17 @@ mod unitary_test {
 }
 
 #[cfg(test)]
-mod integration_tests {
+mod integration_specs {
     use crate::mocks::{
         enums::db_table::TablesEnum,
         functional_tester::FunctionalTester,
         models::{
+            jwt::access_jwt_model,
             postgres::postgres_error,
-            user::{complete_user_model, complete_user_model_hashed, login_user_model},
+            user::{
+                complete_user_model, complete_user_model_hashed, detail_user_model,
+                login_user_model,
+            },
         },
     };
     use actix_web::{
@@ -250,7 +687,7 @@ mod integration_tests {
         infra::{postgres::postgres, redis::Redis},
         modules::user::{
             user_controllers::user_controllers_module,
-            user_dtos::{LoginUserDTO, UserDTO},
+            user_dtos::{DetailUserDTO, LoginUserDTO, UserDTO},
             user_queues::{user_flush_queue, CreateUserAppQueue},
         },
         shared::structs::jwt_claims::Claims,
@@ -262,6 +699,7 @@ mod integration_tests {
     pub enum UserTypes {
         InsertUserDTO(UserDTO),
         LoginUserDTO(LoginUserDTO),
+        DetailUserDTO(DetailUserDTO, Option<String>),
     }
 
     async fn user_call_http_before(user: UserTypes, pool_error: bool) -> ServiceResponse {
@@ -296,6 +734,16 @@ mod integration_tests {
                 .uri("/user/login")
                 .set_json(user)
                 .to_request(),
+            UserTypes::DetailUserDTO(user, jwt) => {
+                let mut request =
+                    test::TestRequest::get().uri(format!("/user/{}", user.id).as_str());
+
+                if let Some(token) = jwt {
+                    request = request.append_header(("Authorization", format!("Bearer {}", token)));
+                }
+
+                request.to_request()
+            }
         };
 
         test::call_service(&app, req).await
@@ -307,7 +755,7 @@ mod integration_tests {
 
         let resp = user_call_http_before(UserTypes::InsertUserDTO(user.clone()), false).await;
 
-        assert!(resp.status().is_success());
+        assert_eq!(resp.status(), 201);
 
         let bytes =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
@@ -327,6 +775,7 @@ mod integration_tests {
 
         FunctionalTester::delete_from_database(
             postgres(),
+            Redis::pool().await,
             TablesEnum::Salt,
             Some(vec![("user_id", &user.id)]),
         )
@@ -334,6 +783,7 @@ mod integration_tests {
 
         FunctionalTester::delete_from_database(
             postgres(),
+            Redis::pool().await,
             TablesEnum::Users,
             Some(vec![("email", &user.email)]),
         )
@@ -347,7 +797,7 @@ mod integration_tests {
 
         let resp = user_call_http_before(UserTypes::InsertUserDTO(user.clone()), false).await;
 
-        assert!(resp.status().is_client_error());
+        assert_eq!(resp.status(), 400);
 
         let bytes_str =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
@@ -371,7 +821,7 @@ mod integration_tests {
 
         let resp = user_call_http_before(UserTypes::InsertUserDTO(user.clone()), false).await;
 
-        assert!(resp.status().is_client_error());
+        assert_eq!(resp.status(), 400);
 
         let bytes_str =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
@@ -395,7 +845,7 @@ mod integration_tests {
 
         let resp = user_call_http_before(UserTypes::InsertUserDTO(user.clone()), false).await;
 
-        assert!(resp.status().is_client_error());
+        assert_eq!(resp.status(), 400);
 
         let bytes_str =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
@@ -419,7 +869,7 @@ mod integration_tests {
 
         let resp = user_call_http_before(UserTypes::InsertUserDTO(user.clone()), false).await;
 
-        assert!(resp.status().is_client_error());
+        assert_eq!(resp.status(), 400);
 
         let bytes_str =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
@@ -445,7 +895,7 @@ mod integration_tests {
         user.name = String::from("João Navarro");
         let resp = user_call_http_before(UserTypes::InsertUserDTO(user.clone()), false).await;
 
-        assert!(resp.status().is_client_error());
+        assert_eq!(resp.status(), 409);
 
         let bytes_str =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
@@ -463,6 +913,7 @@ mod integration_tests {
 
         FunctionalTester::delete_from_database(
             postgres(),
+            Redis::pool().await,
             TablesEnum::Users,
             Some(vec![("email", &user.email)]),
         )
@@ -476,7 +927,7 @@ mod integration_tests {
 
         let resp = user_call_http_before(UserTypes::InsertUserDTO(user.clone()), false).await;
 
-        assert!(resp.status().is_client_error());
+        assert_eq!(resp.status(), 400);
 
         let bytes_str =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
@@ -500,7 +951,7 @@ mod integration_tests {
 
         let resp = user_call_http_before(UserTypes::InsertUserDTO(user.clone()), false).await;
 
-        assert!(resp.status().is_client_error());
+        assert_eq!(resp.status(), 400);
 
         let bytes_str =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
@@ -524,7 +975,7 @@ mod integration_tests {
 
         let resp = user_call_http_before(UserTypes::InsertUserDTO(user.clone()), true).await;
 
-        assert!(resp.status().is_server_error());
+        assert_eq!(resp.status(), 503);
 
         let bytes_str =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
@@ -555,7 +1006,7 @@ mod integration_tests {
 
         let resp = user_call_http_before(UserTypes::LoginUserDTO(login_user_model()), false).await;
 
-        assert!(resp.status().is_success());
+        assert_eq!(resp.status(), 200);
 
         let bytes =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
@@ -569,7 +1020,7 @@ mod integration_tests {
 
         let token_data = decode::<Claims>(
             &refresh_token,
-            &DecodingKey::from_secret(std::env::var("JWT_KEY").unwrap().as_ref()),
+            &DecodingKey::from_secret(std::env::var("JWT_REFRESH_KEY").unwrap().as_ref()),
             &Validation::new(Algorithm::HS256),
         )
         .unwrap();
@@ -577,7 +1028,7 @@ mod integration_tests {
 
         let token_data = decode::<Claims>(
             &access_token,
-            &DecodingKey::from_secret(std::env::var("JWT_KEY2").unwrap().as_ref()),
+            &DecodingKey::from_secret(std::env::var("JWT_ACCESS_KEY").unwrap().as_ref()),
             &Validation::new(Algorithm::HS256),
         )
         .unwrap();
@@ -585,6 +1036,7 @@ mod integration_tests {
 
         FunctionalTester::delete_from_database(
             postgres(),
+            Redis::pool().await,
             TablesEnum::Salt,
             Some(vec![("user_id", &user.id)]),
         )
@@ -592,6 +1044,7 @@ mod integration_tests {
 
         FunctionalTester::delete_from_database(
             postgres(),
+            Redis::pool().await,
             TablesEnum::Users,
             Some(vec![("email", &user.email)]),
         )
@@ -610,7 +1063,7 @@ mod integration_tests {
 
         let resp = user_call_http_before(UserTypes::LoginUserDTO(login_user), false).await;
 
-        assert!(resp.status().is_client_error());
+        assert_eq!(resp.status(), 400);
 
         let bytes =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
@@ -619,6 +1072,7 @@ mod integration_tests {
 
         FunctionalTester::delete_from_database(
             postgres(),
+            Redis::pool().await,
             TablesEnum::Users,
             Some(vec![("email", &insert_user.email)]),
         )
@@ -637,7 +1091,7 @@ mod integration_tests {
 
         let resp = user_call_http_before(UserTypes::LoginUserDTO(login_user), false).await;
 
-        assert!(resp.status().is_client_error());
+        assert_eq!(resp.status(), 400);
 
         let bytes =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
@@ -646,6 +1100,7 @@ mod integration_tests {
 
         FunctionalTester::delete_from_database(
             postgres(),
+            Redis::pool().await,
             TablesEnum::Users,
             Some(vec![("email", &insert_user.email)]),
         )
@@ -664,15 +1119,16 @@ mod integration_tests {
 
         let resp = user_call_http_before(UserTypes::LoginUserDTO(login_user), false).await;
 
-        assert!(resp.status().is_client_error());
+        assert_eq!(resp.status(), 404);
 
         let bytes =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
 
-        assert!(bytes.contains("Não foi encontrado um usuário com este email."));
+        assert!(bytes.contains("Não foi encontrado um usuário com este e-mail."));
 
         FunctionalTester::delete_from_database(
             postgres(),
+            Redis::pool().await,
             TablesEnum::Users,
             Some(vec![("email", &insert_user.email)]),
         )
@@ -691,7 +1147,7 @@ mod integration_tests {
 
         let resp = user_call_http_before(UserTypes::LoginUserDTO(login_user), false).await;
 
-        assert!(resp.status().is_client_error());
+        assert_eq!(resp.status(), 400);
 
         let bytes =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
@@ -700,6 +1156,7 @@ mod integration_tests {
 
         FunctionalTester::delete_from_database(
             postgres(),
+            Redis::pool().await,
             TablesEnum::Users,
             Some(vec![("email", &insert_user.email)]),
         )
@@ -718,7 +1175,7 @@ mod integration_tests {
 
         let resp = user_call_http_before(UserTypes::LoginUserDTO(login_user), false).await;
 
-        assert!(resp.status().is_client_error());
+        assert_eq!(resp.status(), 400);
 
         let bytes =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
@@ -727,6 +1184,7 @@ mod integration_tests {
 
         FunctionalTester::delete_from_database(
             postgres(),
+            Redis::pool().await,
             TablesEnum::Users,
             Some(vec![("email", &insert_user.email)]),
         )
@@ -750,7 +1208,7 @@ mod integration_tests {
 
         let resp = user_call_http_before(UserTypes::LoginUserDTO(login_user), false).await;
 
-        assert!(resp.status().is_client_error());
+        assert_eq!(resp.status(), 401);
 
         let bytes =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
@@ -759,12 +1217,14 @@ mod integration_tests {
 
         FunctionalTester::delete_from_database(
             postgres(),
+            Redis::pool().await,
             TablesEnum::Salt,
             Some(vec![("user_id", &insert_user.id)]),
         )
         .await;
         FunctionalTester::delete_from_database(
             postgres(),
+            Redis::pool().await,
             TablesEnum::Users,
             Some(vec![("email", &insert_user.email)]),
         )
@@ -781,7 +1241,7 @@ mod integration_tests {
         let login_user = login_user_model();
         let resp = user_call_http_before(UserTypes::LoginUserDTO(login_user), true).await;
 
-        assert!(resp.status().is_server_error());
+        assert_eq!(resp.status(), 503);
 
         let bytes_str =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
@@ -791,9 +1251,202 @@ mod integration_tests {
 
         FunctionalTester::delete_from_database(
             postgres(),
+            Redis::pool().await,
             TablesEnum::Users,
             Some(vec![("email", &insert_user.email)]),
         )
         .await;
+    }
+
+    #[test]
+    async fn _detail_user() {
+        dotenv::dotenv().ok();
+
+        let inserted_user = complete_user_model_hashed();
+        FunctionalTester::insert_in_db_users(postgres(), inserted_user.clone()).await;
+
+        let mut detailed_user = detail_user_model();
+        detailed_user.id = inserted_user.id.clone();
+        let jwt = access_jwt_model(inserted_user.id);
+        let resp = user_call_http_before(
+            UserTypes::DetailUserDTO(detailed_user.clone(), Some(jwt)),
+            false,
+        )
+        .await;
+
+        assert_eq!(resp.status(), 200);
+
+        let bytes_str =
+            String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
+
+        assert!(bytes_str.contains(&detailed_user.id));
+        assert!(bytes_str.contains(&detailed_user.name));
+        assert!(bytes_str.contains(&detailed_user.email));
+        assert!(bytes_str.contains(
+            &detailed_user
+                .created_at
+                .chars()
+                .take(10)
+                .collect::<String>()
+        ));
+
+        FunctionalTester::delete_from_database(
+            postgres(),
+            Redis::pool().await,
+            TablesEnum::Users,
+            Some(vec![("email", &detailed_user.email)]),
+        )
+        .await;
+    }
+
+    #[test]
+    async fn _detail_user_service_unavailable_error() {
+        dotenv::dotenv().ok();
+
+        let inserted_user = complete_user_model_hashed();
+        FunctionalTester::insert_in_db_users(postgres(), inserted_user.clone()).await;
+
+        let mut detailed_user = detail_user_model();
+        detailed_user.id = inserted_user.id.clone();
+        let jwt = access_jwt_model(inserted_user.id);
+        let resp = user_call_http_before(
+            UserTypes::DetailUserDTO(detailed_user.clone(), Some(jwt)),
+            true,
+        )
+        .await;
+        assert_eq!(resp.status(), 503);
+
+        let bytes =
+            String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
+
+        assert!(bytes.contains("database"));
+        assert!(bytes.contains("service unavailable"));
+
+        FunctionalTester::delete_from_database(
+            postgres(),
+            Redis::pool().await,
+            TablesEnum::Users,
+            Some(vec![("email", &detailed_user.email)]),
+        )
+        .await;
+    }
+
+    #[test]
+    async fn _detail_user_refresh_token_error() {
+        dotenv::dotenv().ok();
+
+        let inserted_user = complete_user_model_hashed();
+        FunctionalTester::insert_in_db_users(postgres(), inserted_user.clone()).await;
+
+        let mut detailed_user = detail_user_model();
+        detailed_user.id = inserted_user.id.clone();
+
+        let resp =
+            user_call_http_before(UserTypes::DetailUserDTO(detailed_user.clone(), None), false)
+                .await;
+        assert_eq!(resp.status(), 400);
+
+        let bytes =
+            String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
+
+        assert!(bytes.contains("bad request"));
+        assert!(bytes.contains("bearer token"));
+        assert!(bytes.contains("O valor do cabeçalho 'Authorization' deve ser informado."));
+
+        FunctionalTester::delete_from_database(
+            postgres(),
+            Redis::pool().await,
+            TablesEnum::Users,
+            Some(vec![("email", &detailed_user.email)]),
+        )
+        .await;
+    }
+
+    #[test]
+    async fn _detail_user_jwt_unauthorized_error() {
+        dotenv::dotenv().ok();
+
+        let inserted_user = complete_user_model_hashed();
+        FunctionalTester::insert_in_db_users(postgres(), inserted_user.clone()).await;
+
+        let mut detailed_user = detail_user_model();
+        detailed_user.id = inserted_user.id.clone();
+
+        let resp = user_call_http_before(
+            UserTypes::DetailUserDTO(detailed_user.clone(), Some("".to_string())),
+            false,
+        )
+        .await;
+        assert_eq!(resp.status(), 401);
+
+        let bytes =
+            String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
+
+        assert!(bytes.contains("unauthorized"));
+        assert!(bytes.contains("bearer token"));
+
+        FunctionalTester::delete_from_database(
+            postgres(),
+            Redis::pool().await,
+            TablesEnum::Users,
+            Some(vec![("email", &detailed_user.email)]),
+        )
+        .await;
+    }
+
+    #[test]
+    async fn _detail_user_uuid_type_error() {
+        dotenv::dotenv().ok();
+
+        let inserted_user = complete_user_model_hashed();
+        FunctionalTester::insert_in_db_users(postgres(), inserted_user.clone()).await;
+
+        let mut detailed_user = detail_user_model();
+        detailed_user.id = "123456".to_string();
+
+        let jwt = access_jwt_model(inserted_user.id);
+        let resp = user_call_http_before(
+            UserTypes::DetailUserDTO(detailed_user.clone(), Some(jwt)),
+            false,
+        )
+        .await;
+        assert_eq!(resp.status(), 400);
+
+        let bytes =
+            String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
+
+        assert!(bytes.contains("Por favor, envie um valor de UUID válido na URL da requisição."));
+        assert!(bytes.contains("bad request"));
+
+        FunctionalTester::delete_from_database(
+            postgres(),
+            Redis::pool().await,
+            TablesEnum::Users,
+            Some(vec![("email", &detailed_user.email)]),
+        )
+        .await;
+    }
+
+    #[test]
+    async fn _detail_user_not_found_error() {
+        dotenv::dotenv().ok();
+
+        let detailed_user = detail_user_model();
+
+        let jwt = access_jwt_model(detailed_user.id.clone());
+        let resp = user_call_http_before(
+            UserTypes::DetailUserDTO(detailed_user.clone(), Some(jwt)),
+            false,
+        )
+        .await;
+
+        assert_eq!(resp.status(), 404);
+
+        let bytes_str =
+            String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
+
+        assert!(bytes_str.contains("user"));
+        assert!(bytes_str.contains("not found"));
+        assert!(bytes_str.contains("Não foi encontrado um usuário com este id."));
     }
 }
