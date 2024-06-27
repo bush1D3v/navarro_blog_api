@@ -19,7 +19,7 @@ static RE_PASSWORD: Lazy<Regex> = Lazy::new(|| Regex::new("^.*?[@$!%*?&].*$").un
 static RE_EMAIL: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$").unwrap());
 
-#[derive(Serialize, Deserialize, Debug, ToSchema, Validate)]
+#[derive(Serialize, Deserialize, Debug, ToSchema, Validate, Clone)]
 pub struct CreateUserDTO {
     #[validate(
 		length(
@@ -89,4 +89,12 @@ pub struct LoginUserDTO {
 	)]
     #[serde(default)]
     pub password: String,
+}
+
+#[derive(ToSchema, Serialize, Deserialize, Clone)]
+pub struct DetailUserDTO {
+    pub id: String,
+    pub name: String,
+    pub email: String,
+    pub created_at: String,
 }
