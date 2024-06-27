@@ -19,8 +19,8 @@ env:
   REDIS_HOST: ${{vars.REDIS_HOST}}
   REDIS_PORT: ${{vars.REDIS_PORT}}
   POOL_SIZE: ${{vars.POOL_SIZE}}
-  JWT_KEY: ${{secrets.JWT_KEY}}
-  JWT_KEY2: ${{secrets.JWT_KEY2}}
+  JWT_REFRESH_KEY: ${{secrets.JWT_REFRESH_KEY}}
+  JWT_ACCESS_KEY: ${{secrets.JWT_ACCESS_KEY}}
 
 jobs:
   build:
