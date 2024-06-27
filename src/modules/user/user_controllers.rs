@@ -371,13 +371,13 @@ async fn detail_user(
                         email: user.email,
                         created_at: user.created_at,
                     };
-                    return HttpResponse::Ok().json(DetailUserControllerResponse { user });
+                    HttpResponse::Ok().json(DetailUserControllerResponse { user })
                 }
                 Err(e) => e,
             }
         }
         Err(_) => {
-            match detail_user_service(pg_pool, user_id.clone()).await {
+            return match detail_user_service(pg_pool, user_id.clone()).await {
                 Ok(pg_user) => match UserSerdes::serde_json_to_string(&pg_user) {
                     Ok(redis_user) => {
                         let _ = Redis::set_redis(&redis_pool, &user_id, &redis_user).await;
@@ -387,11 +387,11 @@ async fn detail_user(
                             email: pg_user.email,
                             created_at: pg_user.created_at,
                         };
-                        return HttpResponse::Ok().json(DetailUserControllerResponse { user });
+                        HttpResponse::Ok().json(DetailUserControllerResponse { user })
                     }
-                    Err(e) => return e,
+                    Err(e) => e,
                 },
-                Err(e) => return e,
+                Err(e) => e,
             };
         }
     };
