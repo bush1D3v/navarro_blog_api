@@ -8,7 +8,7 @@ use sql_builder::{quote, SqlBuilder};
 use std::{sync::Arc, time::Duration};
 
 type SaltData = (String, String, Data<deadpool_postgres::Pool>);
-type QueueEvent = (String, Json<CreateUserDTO>, Option<String>, SaltData);
+type QueueEvent = (String, Json<CreateUserDTO>, String, SaltData);
 pub type CreateUserAppQueue = deadqueue::unlimited::Queue<QueueEvent>;
 
 async fn insert_user_queue(
@@ -31,7 +31,7 @@ async fn insert_user_queue(
             &quote(&body.name),
             &quote(&body.email),
             &quote(&body.password),
-            &quote(&created_at.unwrap_or(chrono::Utc::now().to_string())),
+            &quote(&created_at),
         ]);
         let mut this_sql = match sql_builder.sql() {
             Ok(x) => x,
