@@ -218,32 +218,28 @@ async fn login_user(
     pg_pool: web::Data<deadpool_postgres::Pool>,
     redis_pool: web::Data<deadpool_redis::Pool>,
 ) -> impl Responder {
-    return match body.validate() {
+    match body.validate() {
         Ok(_) => {
             match Redis::get_redis(&redis_pool, format!("a/{}", body.email.clone()).as_str()).await
             {
-                Ok(redis_user) => {
-                    match UserSerdes::serde_string_to_json(&redis_user) {
-                        Ok(user) => {
-                            let user = LoginUserDTO {
-                                email: user.email,
-                                password: user.password,
-                            };
-                            return match login_user_service(web::Json(user), pg_pool, true).await {
-                                Ok(tokens) => {
-                                    HttpResponse::Ok().json(LoginUserControllerResponse {
-                                        access_token: tokens.access_token,
-                                        access_expires_in: tokens.access_expires_in,
-                                        refresh_token: tokens.refresh_token,
-                                        refresh_expires_in: tokens.refresh_expires_in,
-                                    })
-                                }
-                                Err(e) => e,
-                            };
-                        }
-                        Err(e) => return e,
-                    };
-                }
+                Ok(redis_user) => match UserSerdes::serde_string_to_json(&redis_user) {
+                    Ok(user) => {
+                        let user = LoginUserDTO {
+                            email: user.email,
+                            password: user.password,
+                        };
+                        return match login_user_service(web::Json(user), pg_pool, true).await {
+                            Ok(tokens) => HttpResponse::Ok().json(LoginUserControllerResponse {
+                                access_token: tokens.access_token,
+                                access_expires_in: tokens.access_expires_in,
+                                refresh_token: tokens.refresh_token,
+                                refresh_expires_in: tokens.refresh_expires_in,
+                            }),
+                            Err(e) => e,
+                        };
+                    }
+                    Err(e) => return e,
+                },
                 Err(_) => {
                     return match login_user_service(body, pg_pool, false).await {
                         Ok(tokens) => HttpResponse::Ok().json(LoginUserControllerResponse {
@@ -257,7 +253,7 @@ async fn login_user(
                 }
             }
         }
-        Err(e) => HttpResponse::BadRequest().json(e),
+        Err(e) => return HttpResponse::BadRequest().json(e),
     };
 }
 
@@ -361,38 +357,34 @@ async fn detail_user(
         Ok(user_id) => user_id,
         Err(e) => return e,
     };
-    match Redis::get_redis(&redis_pool, &user_id).await {
-        Ok(redis_user) => {
-            return match UserSerdes::serde_string_to_json(&redis_user) {
-                Ok(user) => {
+    return match Redis::get_redis(&redis_pool, &user_id).await {
+        Ok(redis_user) => match UserSerdes::serde_string_to_json(&redis_user) {
+            Ok(user) => {
+                let user = DetailUserDTO {
+                    id: user.id,
+                    name: user.name,
+                    email: user.email,
+                    created_at: user.created_at,
+                };
+                HttpResponse::Ok().json(DetailUserControllerResponse { user })
+            }
+            Err(e) => e,
+        },
+        Err(_) => match detail_user_service(pg_pool, user_id.clone()).await {
+            Ok(pg_user) => match UserSerdes::serde_json_to_string(&pg_user) {
+                Ok(redis_user) => {
+                    let _ = Redis::set_redis(&redis_pool, &user_id, &redis_user).await;
                     let user = DetailUserDTO {
-                        id: user.id,
-                        name: user.name,
-                        email: user.email,
-                        created_at: user.created_at,
+                        id: pg_user.id,
+                        name: pg_user.name,
+                        email: pg_user.email,
+                        created_at: pg_user.created_at,
                     };
                     HttpResponse::Ok().json(DetailUserControllerResponse { user })
                 }
                 Err(e) => e,
-            }
-        }
-        Err(_) => {
-            return match detail_user_service(pg_pool, user_id.clone()).await {
-                Ok(pg_user) => match UserSerdes::serde_json_to_string(&pg_user) {
-                    Ok(redis_user) => {
-                        let _ = Redis::set_redis(&redis_pool, &user_id, &redis_user).await;
-                        let user = DetailUserDTO {
-                            id: pg_user.id,
-                            name: pg_user.name,
-                            email: pg_user.email,
-                            created_at: pg_user.created_at,
-                        };
-                        HttpResponse::Ok().json(DetailUserControllerResponse { user })
-                    }
-                    Err(e) => e,
-                },
-                Err(e) => e,
-            };
-        }
+            },
+            Err(e) => e,
+        },
     };
 }
