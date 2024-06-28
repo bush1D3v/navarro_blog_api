@@ -228,7 +228,7 @@ async fn login_user(
                             email: user.email,
                             password: user.password,
                         };
-                        return match login_user_service(web::Json(user), pg_pool, true).await {
+                        match login_user_service(web::Json(user), pg_pool, true).await {
                             Ok(tokens) => HttpResponse::Ok().json(LoginUserControllerResponse {
                                 access_token: tokens.access_token,
                                 access_expires_in: tokens.access_expires_in,
@@ -236,25 +236,23 @@ async fn login_user(
                                 refresh_expires_in: tokens.refresh_expires_in,
                             }),
                             Err(e) => e,
-                        };
+                        }
                     }
-                    Err(e) => return e,
+                    Err(e) => e,
                 },
-                Err(_) => {
-                    return match login_user_service(body, pg_pool, false).await {
-                        Ok(tokens) => HttpResponse::Ok().json(LoginUserControllerResponse {
-                            access_token: tokens.access_token,
-                            access_expires_in: tokens.access_expires_in,
-                            refresh_token: tokens.refresh_token,
-                            refresh_expires_in: tokens.refresh_expires_in,
-                        }),
-                        Err(e) => e,
-                    }
-                }
+                Err(_) => match login_user_service(body, pg_pool, false).await {
+                    Ok(tokens) => HttpResponse::Ok().json(LoginUserControllerResponse {
+                        access_token: tokens.access_token,
+                        access_expires_in: tokens.access_expires_in,
+                        refresh_token: tokens.refresh_token,
+                        refresh_expires_in: tokens.refresh_expires_in,
+                    }),
+                    Err(e) => e,
+                },
             }
         }
-        Err(e) => return HttpResponse::BadRequest().json(e),
-    };
+        Err(e) => HttpResponse::BadRequest().json(e),
+    }
 }
 
 #[derive(ToSchema, Serialize, Deserialize)]
@@ -357,7 +355,7 @@ async fn detail_user(
         Ok(user_id) => user_id,
         Err(e) => return e,
     };
-    return match Redis::get_redis(&redis_pool, &user_id).await {
+    match Redis::get_redis(&redis_pool, &user_id).await {
         Ok(redis_user) => match UserSerdes::serde_string_to_json(&redis_user) {
             Ok(user) => {
                 let user = DetailUserDTO {
@@ -386,5 +384,5 @@ async fn detail_user(
             },
             Err(e) => e,
         },
-    };
+    }
 }
