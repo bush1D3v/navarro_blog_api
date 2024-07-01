@@ -13,7 +13,43 @@ impl QueryParamsModels {
             limit: Some(20),
             offset: Some(0),
             order_by: Some(String::from("created_at")),
-            order_direction: Some(String::from("asc")),
+            order_direction: Some(String::from("desc")),
+        }
+    }
+
+    pub fn limit_query_params_model(limit: i8) -> QueryParams {
+        QueryParams {
+            limit: Some(limit),
+            offset: None,
+            order_by: None,
+            order_direction: None,
+        }
+    }
+
+    pub fn offset_query_params_model(offset: i8) -> QueryParams {
+        QueryParams {
+            limit: None,
+            offset: Some(offset),
+            order_by: None,
+            order_direction: None,
+        }
+    }
+
+    pub fn order_by_query_params_model(order_by: &str) -> QueryParams {
+        QueryParams {
+            limit: None,
+            offset: None,
+            order_by: Some(String::from(order_by)),
+            order_direction: None,
+        }
+    }
+
+    pub fn order_direction_query_params_model(order_direction: &str) -> QueryParams {
+        QueryParams {
+            limit: None,
+            offset: None,
+            order_by: None,
+            order_direction: Some(String::from(order_direction)),
         }
     }
 }
