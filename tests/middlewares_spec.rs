@@ -3,7 +3,7 @@ pub mod mocks;
 #[cfg(test)]
 
 mod middlewares_specs {
-    use crate::mocks::models::jwt::{access_jwt_model, refresh_jwt_model};
+    use crate::mocks::models::jwt::JwtModels;
     use actix_web::{
         body,
         http::header::{HeaderMap, HeaderName, HeaderValue},
@@ -20,7 +20,7 @@ mod middlewares_specs {
 
         let mut header_map_mock: HeaderMap = HeaderMap::new();
 
-        let jwt = access_jwt_model("123".to_string());
+        let jwt = JwtModels::access_jwt_model("123".to_string());
 
         let authorization_value = format!("Bearer {}", jwt);
         let authorization_header_value = HeaderValue::from_str(&authorization_value).unwrap();
@@ -40,7 +40,7 @@ mod middlewares_specs {
 
         let mut header_map_mock: HeaderMap = HeaderMap::new();
 
-        let jwt = refresh_jwt_model("123".to_string());
+        let jwt = JwtModels::refresh_jwt_model("123".to_string());
 
         let authorization_value = format!("Bearer {}", jwt);
         let authorization_header_value = HeaderValue::from_str(&authorization_value).unwrap();
