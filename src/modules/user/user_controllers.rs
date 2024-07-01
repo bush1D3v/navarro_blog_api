@@ -2,7 +2,7 @@ use super::{
     user_dtos::{CreateUserDTO, DetailUserDTO, LoginUserDTO},
     user_queues::CreateUserAppQueue,
     user_serdes::UserSerdes,
-    user_services::{detail_user_service, insert_user_service},
+    user_services::{detail_user_service, insert_user_service, list_users_service},
 };
 use crate::{
     infra::redis::Redis,
@@ -10,6 +10,7 @@ use crate::{
         jwt_token_middleware::jwt_token_middleware, uuid_path_middleware::uuid_path_middleware,
     },
     modules::user::user_services::login_user_service,
+    shared::structs::query_params::QueryParams,
     utils::error_construct::error_construct,
 };
 use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
@@ -22,13 +23,14 @@ pub fn user_controllers_module() -> actix_web::Scope {
     web::scope("/user")
         .service(insert_user)
         .service(login_user)
+        .service(list_users)
         .service(detail_user)
 }
 
 #[utoipa::path(
 	tag = "user",
+    path = "/user",
 	request_body = CreateUserDTO,
-    path = "user",
 	responses((
 		status = 201, description = "Insere um novo usuário (Created)", headers((
 			"location" = String, description = "Link para realizar get de dados do usuário inserido"
@@ -107,12 +109,12 @@ async fn insert_user(
                     None,
                 )),
                 Err(_) => match insert_user_service(queue.clone(), pg_pool, body).await {
-                    Ok(response) => match UserSerdes::serde_json_to_string(&response.user) {
+                    Ok(resp) => match UserSerdes::serde_json_to_string(&resp.user) {
                         Ok(string_user) => {
-                            let _ = Redis::set_redis(&redis_pool, &response.user_id, &string_user)
-                                .await;
+                            let _ =
+                                Redis::set_redis(&redis_pool, &resp.user_id, &string_user).await;
                             HttpResponse::Created()
-                                .append_header(("Location", format!("/user/{}", response.user_id)))
+                                .append_header(("Location", format!("/user/{}", resp.user_id)))
                                 .finish()
                         }
                         Err(e) => e,
@@ -135,7 +137,7 @@ pub struct LoginUserControllerResponse {
 
 #[utoipa::path(
 	tag = "user",
-    path = "user/login",
+    path = "/user/login",
 	request_body = LoginUserDTO,
 	responses((
 		status = 200, description = "Usuário logado com sucesso (OK)", body = LoginResponse,
@@ -256,13 +258,119 @@ async fn login_user(
 }
 
 #[derive(ToSchema, Serialize, Deserialize)]
+pub struct ListUserControllerResponse {
+    pub users: Vec<DetailUserDTO>,
+}
+
+#[utoipa::path(
+    tag = "user",
+    path = "/user",
+    security(
+        ("bearer_auth" = [])
+    ),
+    params(
+        ("offset" = Option<i8>, Query, description = "Paginação (offset)"),
+        ("limit" = Option<i8>, Query, description = "Paginação (limit)"),
+        ("order_by" = Option<String>, Query, description = "Coluna de ordenação"),
+        ("order_direction" = Option<String>, Query, description = "Direção da ordenação")
+    ),
+    responses((
+        status = 200, description = "Listagem de usuários com sucesso (OK)", body = ListUserControllerResponse,
+        content_type = "application/json", example = json ! ({
+            "users": [
+                {
+                    "id": "f5d46b1b-6adb-40ac-82d6-b0006cf781c0",
+                    "name": "borrow lightning",
+                    "email": "lightning@gmail.com",
+                    "created_at": "2024-06-18 22:03:54.053147-03",
+                },
+                {
+                    "id": "f5d46b1b-6adb-40ac-82d6-b0006cf781c1",
+                    "name": "borrow lightning2",
+                    "email": "lightning2@gmail.com",
+                    "created_at": "2024-06-18 22:03:54.053147-02",
+                }
+            ]
+        })
+    ), (
+		status = 401, description = "Credenciais de autenticação inválidas (Unauthorized)",
+		body = ErrorStruct, content_type = "application/json", example = json ! ({
+            "bearer token": [{
+                "code": "unauthorized",
+                "message": "Acesso negado por token de autorização.",
+                "params": {
+                    "min": null,
+                    "value": null,
+                    "max": null
+                }
+		    }]
+        })
+	), (
+		status = 404, description = "Usuários não encontrados (Not Found)", body = ErrorStruct,
+		content_type = "application/json", example = json ! ({
+            "id": [{
+                "code": "not found",
+                "message": "Não foram encontrados usuários.",
+                "params": {
+                    "min": null,
+                    "value": "06buff3f-637d-4c15-a02c-c8247ffb9400",
+                    "max": null
+                }
+		    }]
+        })
+	), (
+		status = 500, description = "Erro Interno do Servidor (Internal Server Error)", body = ErrorStruct,
+		content_type = "application/json", example = json ! ({
+            "jsonwebtoken": [{
+                "code": "internal server error",
+                "message": "failed to decode token",
+                "params": {
+                    "min": null,
+                    "value": null,
+                    "max": null,
+                }
+		    }]
+        })
+	), (
+		status = 503, description = "Serviço Indisponível (Service Unavailable)", body = ErrorStruct,
+		content_type = "application/json", example = json ! ({
+            "database": [{
+                "code": "service unavailable",
+                "message": "Error occurred while creating a new object: db error: FATAL: password authentication failed for user \"postgres\"",
+                "params": {
+                    "min": null,
+                    "value": null,
+                    "max": null,
+                }
+		    }]
+        })
+	))
+)]
+#[get("")]
+async fn list_users(
+    pg_pool: web::Data<deadpool_postgres::Pool>,
+    req: HttpRequest,
+    query_params: web::Query<QueryParams>,
+) -> impl Responder {
+    match jwt_token_middleware(req.headers()) {
+        Ok(_) => (),
+        Err(e) => return e,
+    };
+    match list_users_service(pg_pool, query_params).await {
+        Ok(users) => HttpResponse::Ok().json(ListUserControllerResponse { users }),
+        Err(e) => e,
+    }
+}
+
+#[derive(ToSchema, Serialize, Deserialize)]
 pub struct DetailUserControllerResponse {
     pub user: DetailUserDTO,
 }
 
 #[utoipa::path(
     tag = "user",
-    path = "user/{user_id}",
+    path = "/user/{user_id}",
+    security(("bearer_auth" = [])),
     responses((
         status = 200, description = "Detalhamento de usuário com sucesso (OK)", body = DetailUserControllerResponse,
         content_type = "application/json", example = json ! ({
