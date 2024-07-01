@@ -1,12 +1,15 @@
 use crate::{
     modules::user::{
         user_controllers::{
-            DetailUserControllerResponse, LoginUserControllerResponse, __path_detail_user,
-            __path_insert_user, __path_login_user,
+            DetailUserControllerResponse, ListUserControllerResponse, LoginUserControllerResponse,
+            __path_detail_user, __path_insert_user, __path_list_users, __path_login_user,
         },
         user_dtos::{CreateUserDTO, DetailUserDTO, LoginUserDTO},
     },
-    shared::structs::error_struct::{ErrorParams, ErrorStruct},
+    shared::structs::{
+        error_struct::{ErrorParams, ErrorStruct},
+        query_params::QueryParams,
+    },
 };
 use utoipa::{
     openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme},
@@ -17,7 +20,7 @@ use utoipa_swagger_ui::SwaggerUi;
 pub fn api_doc() -> SwaggerUi {
     #[derive(OpenApi)]
     #[openapi(
-		paths(insert_user, login_user, detail_user),
+		paths(insert_user, login_user, detail_user, list_users),
 		components(
 			schemas(
 				CreateUserDTO,
@@ -27,13 +30,21 @@ pub fn api_doc() -> SwaggerUi {
 				ErrorParams,
                 DetailUserControllerResponse,
                 DetailUserDTO,
+                ListUserControllerResponse,
+                QueryParams
 			)
 		),
 		modifiers(& SecurityModifier),
-		servers((
-		    url = "https://hub.docker.com/repository/docker/bush1d3v/navarro_blog_api",
-		    description = "Docker Image",
-		)),
+		servers(
+            (
+                url = "https://hub.docker.com/repository/docker/bush1d3v/navarro_blog_api",
+                description = "Docker Image",
+		    ),
+            (
+                url = "http://localhost:8080/",
+                description = "Local Server",
+		    )
+        ),
 		tags((
 		    name = "user", description = "Controladores da entidade de usuário"
 		)),
@@ -55,10 +66,6 @@ pub fn api_doc() -> SwaggerUi {
                         .bearer_format("JWT")
                         .build(),
                 ),
-            );
-            components.add_security_scheme(
-                "basic_auth",
-                SecurityScheme::Http(HttpBuilder::new().scheme(HttpAuthScheme::Basic).build()),
             );
         }
     }
