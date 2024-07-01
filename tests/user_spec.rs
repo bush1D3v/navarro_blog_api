@@ -17,7 +17,18 @@ mod unitary_specs {
     };
     use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
     use navarro_blog_api::{
-        modules::user::{user_dtos::UserDTO, user_queues::CreateUserAppQueue},
+        modules::user::{
+            user_dtos::UserDTO,
+            user_providers::{email_exists, email_not_exists},
+            user_queues::CreateUserAppQueue,
+            user_repositories::{
+                detail_user_repository, insert_user_repository, list_users_repository,
+                login_user_repository,
+            },
+            user_services::{
+                detail_user_service, insert_user_service, list_users_service, login_user_service,
+            },
+        },
         shared::structs::jwt_claims::Claims,
     };
     use std::{io::ErrorKind, sync::Arc};
@@ -25,7 +36,6 @@ mod unitary_specs {
     #[test]
     async fn _insert_user_service() {
         dotenv::dotenv().ok();
-        use navarro_blog_api::modules::user::user_services::insert_user_service;
 
         let queue = Arc::new(CreateUserAppQueue::new());
         let user = UserModels::simple_user_model();
@@ -58,7 +68,6 @@ mod unitary_specs {
     #[test]
     async fn _insert_user_service_conflict_error() {
         dotenv::dotenv().ok();
-        use navarro_blog_api::modules::user::user_services::insert_user_service;
 
         let queue = Arc::new(CreateUserAppQueue::new());
         let user = UserModels::simple_user_model();
@@ -99,7 +108,6 @@ mod unitary_specs {
     #[test]
     async fn _insert_user_service_error_service_unavailable() {
         dotenv::dotenv().ok();
-        use navarro_blog_api::modules::user::user_services::insert_user_service;
 
         let queue = Arc::new(CreateUserAppQueue::new());
         let user = UserModels::simple_user_model();
@@ -138,7 +146,6 @@ mod unitary_specs {
     #[test]
     async fn _insert_user_repository() {
         dotenv::dotenv().ok();
-        use navarro_blog_api::modules::user::user_repositories::insert_user_repository;
 
         let queue = Arc::new(CreateUserAppQueue::new());
 
@@ -166,7 +173,6 @@ mod unitary_specs {
     #[test]
     async fn _login_user_service() {
         dotenv::dotenv().ok();
-        use navarro_blog_api::modules::user::user_services::login_user_service;
 
         let mut user = UserModels::complete_user_model_hashed();
 
@@ -229,7 +235,6 @@ mod unitary_specs {
     #[test]
     async fn _login_user_service_error_not_found() {
         dotenv::dotenv().ok();
-        use navarro_blog_api::modules::user::user_services::login_user_service;
 
         let resp = login_user_service(
             web::Json(UserModels::login_user_model()),
@@ -252,7 +257,6 @@ mod unitary_specs {
     #[test]
     async fn _login_user_service_error_unauthorized() {
         dotenv::dotenv().ok();
-        use navarro_blog_api::modules::user::user_services::login_user_service;
 
         let mut user = UserModels::complete_user_model_hashed();
 
@@ -307,7 +311,6 @@ mod unitary_specs {
     #[test]
     async fn _login_user_service_error_service_unavailable() {
         dotenv::dotenv().ok();
-        use navarro_blog_api::modules::user::user_services::login_user_service;
 
         let mut user = UserModels::complete_user_model_hashed();
 
@@ -360,7 +363,6 @@ mod unitary_specs {
     #[test]
     async fn _login_user_repository() {
         dotenv::dotenv().ok();
-        use navarro_blog_api::modules::user::user_repositories::login_user_repository;
 
         let user = UserModels::complete_user_model();
 
@@ -398,7 +400,6 @@ mod unitary_specs {
     #[test]
     async fn _login_user_repository_error_not_found() {
         dotenv::dotenv().ok();
-        use navarro_blog_api::modules::user::user_repositories::login_user_repository;
 
         let user = UserModels::complete_user_model();
 
@@ -429,7 +430,6 @@ mod unitary_specs {
     #[test]
     async fn _login_user_repository_error_service_unavailable() {
         dotenv::dotenv().ok();
-        use navarro_blog_api::modules::user::user_repositories::login_user_repository;
 
         let user = UserModels::complete_user_model();
 
@@ -456,7 +456,6 @@ mod unitary_specs {
     #[test]
     async fn _detail_user_service() {
         dotenv::dotenv().ok();
-        use navarro_blog_api::modules::user::user_services::detail_user_service;
 
         let user = UserModels::complete_user_model_hashed();
 
@@ -490,7 +489,6 @@ mod unitary_specs {
     #[test]
     async fn _detail_user_service_error_not_found() {
         dotenv::dotenv().ok();
-        use navarro_blog_api::modules::user::user_services::detail_user_service;
 
         let user = UserModels::complete_user_model_hashed();
 
@@ -522,7 +520,6 @@ mod unitary_specs {
     #[test]
     async fn _detail_user_service_error_service_unavailable() {
         dotenv::dotenv().ok();
-        use navarro_blog_api::modules::user::user_services::detail_user_service;
 
         let resp = detail_user_service(
             web::Data::new(PostgresModels::postgres_error()),
@@ -544,7 +541,6 @@ mod unitary_specs {
     #[test]
     async fn _detail_user_repository() {
         dotenv::dotenv().ok();
-        use navarro_blog_api::modules::user::user_repositories::detail_user_repository;
 
         let user = UserModels::complete_user_model_hashed();
 
@@ -578,7 +574,6 @@ mod unitary_specs {
     #[test]
     async fn _detail_user_repository_error_not_found() {
         dotenv::dotenv().ok();
-        use navarro_blog_api::modules::user::user_repositories::detail_user_repository;
 
         let user = UserModels::complete_user_model();
 
@@ -600,7 +595,6 @@ mod unitary_specs {
     #[test]
     async fn _detail_user_repository_error_service_unavailable() {
         dotenv::dotenv().ok();
-        use navarro_blog_api::modules::user::user_repositories::detail_user_repository;
 
         let user = UserModels::complete_user_model();
 
@@ -617,12 +611,12 @@ mod unitary_specs {
 
     #[test]
     async fn _list_users_service() {
-        use navarro_blog_api::modules::user::user_services::list_users_service;
         dotenv::dotenv().ok();
 
-        let mut users: Vec<UserDTO> = Vec::with_capacity(5);
+        let total_users = 5;
+        let mut users: Vec<UserDTO> = Vec::with_capacity(total_users);
 
-        for i in 0..5 {
+        for i in 0..total_users as usize {
             let mut user = UserModels::complete_user_model_hashed();
             user.email += &i.to_string();
 
@@ -639,9 +633,10 @@ mod unitary_specs {
         .await
         .unwrap();
 
-        assert_eq!(resp.len(), 5);
+        assert_eq!(resp.len(), total_users);
 
-        for i in 0..5 {
+        users.reverse();
+        for i in 0..total_users as usize {
             assert!(resp[i].id == users[i].id);
             assert!(resp[i].name == users[i].name);
             assert!(resp[i].email == users[i].email);
@@ -660,8 +655,201 @@ mod unitary_specs {
     }
 
     #[test]
+    async fn _list_users_service_offset_query_params() {
+        dotenv::dotenv().ok();
+
+        let total_users = 5;
+        let mut users: Vec<UserDTO> = Vec::with_capacity(total_users);
+
+        for i in 0..total_users {
+            let mut user = UserModels::complete_user_model_hashed();
+            user.email += &i.to_string();
+
+            users.push(
+                FunctionalTester::insert_in_db_users(PostgresModels::postgres_success(), user)
+                    .await,
+            );
+        }
+        let offset = 2;
+        let resp = list_users_service(
+            Data::new(PostgresModels::postgres_success()),
+            Query(QueryParamsModels::offset_query_params_model(offset)),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(resp.len(), total_users - offset as usize);
+
+        let bytes = serde_json::to_string(&resp).unwrap();
+
+        for i in 0..total_users - offset as usize {
+            assert!(bytes.contains(&users[i].email));
+
+            FunctionalTester::delete_from_database(
+                PostgresModels::postgres_success(),
+                RedisModels::pool_success().await,
+                TablesEnum::Users,
+                Some(vec![("email", &users[i].email)]),
+            )
+            .await;
+        }
+
+        for i in total_users - offset as usize..total_users {
+            assert!(!bytes.contains(&users[i].email));
+
+            FunctionalTester::delete_from_database(
+                PostgresModels::postgres_success(),
+                RedisModels::pool_success().await,
+                TablesEnum::Users,
+                Some(vec![("email", &users[i].email)]),
+            )
+            .await;
+        }
+    }
+
+    #[test]
+    async fn _list_users_service_limit_query_params() {
+        dotenv::dotenv().ok();
+
+        let total_users = 5;
+        let mut users: Vec<UserDTO> = Vec::with_capacity(total_users);
+
+        for i in 0..total_users as usize {
+            let mut user = UserModels::complete_user_model_hashed();
+            user.email += &i.to_string();
+
+            users.push(
+                FunctionalTester::insert_in_db_users(PostgresModels::postgres_success(), user)
+                    .await,
+            );
+        }
+        let limit = 2;
+        let resp = list_users_service(
+            Data::new(PostgresModels::postgres_success()),
+            Query(QueryParamsModels::limit_query_params_model(limit)),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(resp.len(), limit as usize);
+
+        let bytes = serde_json::to_string(&resp).unwrap();
+
+        for i in total_users - limit as usize..total_users {
+            assert!(bytes.contains(&users[i].email));
+
+            FunctionalTester::delete_from_database(
+                PostgresModels::postgres_success(),
+                RedisModels::pool_success().await,
+                TablesEnum::Users,
+                Some(vec![("email", &users[i].email)]),
+            )
+            .await;
+        }
+
+        for i in 0..limit as usize {
+            assert!(!bytes.contains(&users[i].email));
+
+            FunctionalTester::delete_from_database(
+                PostgresModels::postgres_success(),
+                RedisModels::pool_success().await,
+                TablesEnum::Users,
+                Some(vec![("email", &users[i].email)]),
+            )
+            .await;
+        }
+    }
+
+    #[test]
+    async fn _list_users_service_order_by_query_params() {
+        dotenv::dotenv().ok();
+
+        let total_users = 5;
+        let mut users: Vec<UserDTO> = Vec::with_capacity(total_users);
+
+        for i in 0..total_users as usize {
+            let mut user = UserModels::complete_user_model_hashed();
+            user.email += &i.to_string();
+
+            users.push(
+                FunctionalTester::insert_in_db_users(PostgresModels::postgres_success(), user)
+                    .await,
+            );
+        }
+
+        let resp = list_users_service(
+            Data::new(PostgresModels::postgres_success()),
+            Query(QueryParamsModels::order_by_query_params_model("created_at")),
+        )
+        .await
+        .unwrap();
+
+        let bytes = serde_json::to_string(&resp).unwrap();
+
+        for i in 0..total_users - 1 as usize {
+            assert!(bytes.contains(&users[i].id));
+            assert!(bytes.contains(&users[i].name));
+            assert!(bytes.contains(&users[i].email));
+            assert!(bytes.contains(&users[i].created_at.chars().take(10).collect::<String>()));
+
+            assert!(resp[i].created_at > resp[i + 1].created_at);
+
+            FunctionalTester::delete_from_database(
+                PostgresModels::postgres_success(),
+                RedisModels::pool_success().await,
+                TablesEnum::Users,
+                Some(vec![("email", &users[i].email)]),
+            )
+            .await;
+        }
+    }
+
+    #[test]
+    async fn _list_users_service_order_direction_query_params() {
+        dotenv::dotenv().ok();
+
+        let total_users = 5;
+        let mut users: Vec<UserDTO> = Vec::with_capacity(total_users);
+
+        for i in 0..total_users as usize {
+            let mut user = UserModels::complete_user_model_hashed();
+            user.email += &i.to_string();
+
+            users.push(
+                FunctionalTester::insert_in_db_users(PostgresModels::postgres_success(), user)
+                    .await,
+            );
+        }
+
+        let resp = list_users_service(
+            Data::new(PostgresModels::postgres_success()),
+            Query(QueryParamsModels::order_direction_query_params_model("asc")),
+        )
+        .await
+        .unwrap();
+
+        let bytes = serde_json::to_string(&resp).unwrap();
+
+        for i in 0..total_users - 1 as usize {
+            assert!(bytes.contains(&users[i].id));
+            assert!(bytes.contains(&users[i].name));
+            assert!(bytes.contains(&users[i].email));
+            assert!(bytes.contains(&users[i].created_at.chars().take(10).collect::<String>()));
+
+            assert!(resp[i].created_at < resp[i + 1].created_at);
+
+            FunctionalTester::delete_from_database(
+                PostgresModels::postgres_success(),
+                RedisModels::pool_success().await,
+                TablesEnum::Users,
+                Some(vec![("email", &users[i].email)]),
+            )
+            .await;
+        }
+    }
+
+    #[test]
     async fn _list_users_service_error_service_unavailable() {
-        use navarro_blog_api::modules::user::user_services::list_users_service;
         dotenv::dotenv().ok();
 
         let resp = list_users_service(
@@ -683,7 +871,6 @@ mod unitary_specs {
 
     #[test]
     async fn _list_users_service_error_not_found() {
-        use navarro_blog_api::modules::user::user_services::list_users_service;
         dotenv::dotenv().ok();
 
         let resp = list_users_service(
@@ -706,12 +893,12 @@ mod unitary_specs {
 
     #[test]
     async fn _list_users_repository() {
-        use navarro_blog_api::modules::user::user_repositories::list_users_repository;
         dotenv::dotenv().ok();
 
-        let mut users: Vec<UserDTO> = Vec::with_capacity(5);
+        let total_users = 5;
+        let mut users: Vec<UserDTO> = Vec::with_capacity(total_users);
 
-        for i in 0..5 {
+        for i in 0..total_users as usize {
             let mut user = UserModels::complete_user_model_hashed();
             user.email += &i.to_string();
 
@@ -728,9 +915,10 @@ mod unitary_specs {
         .await
         .unwrap();
 
-        assert_eq!(resp.len(), 5);
+        assert_eq!(resp.len(), total_users);
 
-        for i in 0..5 {
+        users.reverse();
+        for i in 0..total_users as usize {
             assert!(resp[i].id == users[i].id);
             assert!(resp[i].name == users[i].name);
             assert!(resp[i].email == users[i].email);
@@ -749,8 +937,201 @@ mod unitary_specs {
     }
 
     #[test]
+    async fn _list_users_repository_offset_query_params() {
+        dotenv::dotenv().ok();
+
+        let total_users = 5;
+        let mut users: Vec<UserDTO> = Vec::with_capacity(total_users);
+
+        for i in 0..total_users {
+            let mut user = UserModels::complete_user_model_hashed();
+            user.email += &i.to_string();
+
+            users.push(
+                FunctionalTester::insert_in_db_users(PostgresModels::postgres_success(), user)
+                    .await,
+            );
+        }
+        let offset = 2;
+        let resp = list_users_repository(
+            Data::new(PostgresModels::postgres_success()),
+            Query(QueryParamsModels::offset_query_params_model(offset)),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(resp.len(), total_users - offset as usize);
+
+        let bytes = serde_json::to_string(&resp).unwrap();
+
+        for i in 0..total_users - offset as usize {
+            assert!(bytes.contains(&users[i].email));
+
+            FunctionalTester::delete_from_database(
+                PostgresModels::postgres_success(),
+                RedisModels::pool_success().await,
+                TablesEnum::Users,
+                Some(vec![("email", &users[i].email)]),
+            )
+            .await;
+        }
+
+        for i in total_users - offset as usize..total_users {
+            assert!(!bytes.contains(&users[i].email));
+
+            FunctionalTester::delete_from_database(
+                PostgresModels::postgres_success(),
+                RedisModels::pool_success().await,
+                TablesEnum::Users,
+                Some(vec![("email", &users[i].email)]),
+            )
+            .await;
+        }
+    }
+
+    #[test]
+    async fn _list_users_repository_limit_query_params() {
+        dotenv::dotenv().ok();
+
+        let total_users = 5;
+        let mut users: Vec<UserDTO> = Vec::with_capacity(total_users);
+
+        for i in 0..total_users as usize {
+            let mut user = UserModels::complete_user_model_hashed();
+            user.email += &i.to_string();
+
+            users.push(
+                FunctionalTester::insert_in_db_users(PostgresModels::postgres_success(), user)
+                    .await,
+            );
+        }
+        let limit = 2;
+        let resp = list_users_repository(
+            Data::new(PostgresModels::postgres_success()),
+            Query(QueryParamsModels::limit_query_params_model(limit)),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(resp.len(), limit as usize);
+
+        let bytes = serde_json::to_string(&resp).unwrap();
+
+        for i in total_users - limit as usize..total_users {
+            assert!(bytes.contains(&users[i].email));
+
+            FunctionalTester::delete_from_database(
+                PostgresModels::postgres_success(),
+                RedisModels::pool_success().await,
+                TablesEnum::Users,
+                Some(vec![("email", &users[i].email)]),
+            )
+            .await;
+        }
+
+        for i in 0..limit as usize {
+            assert!(!bytes.contains(&users[i].email));
+
+            FunctionalTester::delete_from_database(
+                PostgresModels::postgres_success(),
+                RedisModels::pool_success().await,
+                TablesEnum::Users,
+                Some(vec![("email", &users[i].email)]),
+            )
+            .await;
+        }
+    }
+
+    #[test]
+    async fn _list_users_repository_order_by_query_params() {
+        dotenv::dotenv().ok();
+
+        let total_users = 5;
+        let mut users: Vec<UserDTO> = Vec::with_capacity(total_users);
+
+        for i in 0..total_users as usize {
+            let mut user = UserModels::complete_user_model_hashed();
+            user.email += &i.to_string();
+
+            users.push(
+                FunctionalTester::insert_in_db_users(PostgresModels::postgres_success(), user)
+                    .await,
+            );
+        }
+
+        let resp = list_users_repository(
+            Data::new(PostgresModels::postgres_success()),
+            Query(QueryParamsModels::order_by_query_params_model("created_at")),
+        )
+        .await
+        .unwrap();
+
+        let bytes = serde_json::to_string(&resp).unwrap();
+
+        for i in 0..total_users - 1 as usize {
+            assert!(bytes.contains(&users[i].id));
+            assert!(bytes.contains(&users[i].name));
+            assert!(bytes.contains(&users[i].email));
+            assert!(bytes.contains(&users[i].created_at.chars().take(10).collect::<String>()));
+
+            assert!(resp[i].created_at > resp[i + 1].created_at);
+
+            FunctionalTester::delete_from_database(
+                PostgresModels::postgres_success(),
+                RedisModels::pool_success().await,
+                TablesEnum::Users,
+                Some(vec![("email", &users[i].email)]),
+            )
+            .await;
+        }
+    }
+
+    #[test]
+    async fn _list_users_repository_order_direction_query_params() {
+        dotenv::dotenv().ok();
+
+        let total_users = 5;
+        let mut users: Vec<UserDTO> = Vec::with_capacity(total_users);
+
+        for i in 0..total_users as usize {
+            let mut user = UserModels::complete_user_model_hashed();
+            user.email += &i.to_string();
+
+            users.push(
+                FunctionalTester::insert_in_db_users(PostgresModels::postgres_success(), user)
+                    .await,
+            );
+        }
+
+        let resp = list_users_repository(
+            Data::new(PostgresModels::postgres_success()),
+            Query(QueryParamsModels::order_direction_query_params_model("asc")),
+        )
+        .await
+        .unwrap();
+
+        let bytes = serde_json::to_string(&resp).unwrap();
+
+        for i in 0..total_users - 1 as usize {
+            assert!(bytes.contains(&users[i].id));
+            assert!(bytes.contains(&users[i].name));
+            assert!(bytes.contains(&users[i].email));
+            assert!(bytes.contains(&users[i].created_at.chars().take(10).collect::<String>()));
+
+            assert!(resp[i].created_at < resp[i + 1].created_at);
+
+            FunctionalTester::delete_from_database(
+                PostgresModels::postgres_success(),
+                RedisModels::pool_success().await,
+                TablesEnum::Users,
+                Some(vec![("email", &users[i].email)]),
+            )
+            .await;
+        }
+    }
+
+    #[test]
     async fn _list_users_repository_error_service_unavailable() {
-        use navarro_blog_api::modules::user::user_repositories::list_users_repository;
         dotenv::dotenv().ok();
 
         let resp = list_users_repository(
@@ -766,7 +1147,6 @@ mod unitary_specs {
 
     #[test]
     async fn _list_users_repository_error_not_found() {
-        use navarro_blog_api::modules::user::user_repositories::list_users_repository;
         dotenv::dotenv().ok();
 
         let resp = list_users_repository(
@@ -784,7 +1164,6 @@ mod unitary_specs {
     #[test]
     async fn _email_exists_provider() {
         dotenv::dotenv().ok();
-        use navarro_blog_api::modules::user::user_providers::email_exists;
 
         let user = FunctionalTester::insert_in_db_users(
             PostgresModels::postgres_success(),
@@ -818,7 +1197,6 @@ mod unitary_specs {
     #[test]
     async fn _email_exists_provider_error_service_unavailable() {
         dotenv::dotenv().ok();
-        use navarro_blog_api::modules::user::user_providers::email_exists;
 
         let user = FunctionalTester::insert_in_db_users(
             PostgresModels::postgres_success(),
@@ -848,7 +1226,6 @@ mod unitary_specs {
     #[test]
     async fn _email_not_exists_provider() {
         dotenv::dotenv().ok();
-        use navarro_blog_api::modules::user::user_providers::email_not_exists;
 
         let user = UserModels::simple_user_model();
 
@@ -879,7 +1256,6 @@ mod unitary_specs {
     #[test]
     async fn _email_not_exists_provider_error_service_unavailable() {
         dotenv::dotenv().ok();
-        use navarro_blog_api::modules::user::user_providers::email_not_exists;
 
         let user = UserModels::simple_user_model();
 
@@ -926,7 +1302,7 @@ mod integration_specs {
     use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
     use navarro_blog_api::{
         modules::user::{
-            user_controllers::user_controllers_module,
+            user_controllers::{user_controllers_module, ListUserControllerResponse},
             user_dtos::{DetailUserDTO, LoginUserDTO, UserDTO},
             user_queues::{user_flush_queue, CreateUserAppQueue},
         },
@@ -1780,9 +2156,10 @@ mod integration_specs {
     async fn _list_users() {
         dotenv::dotenv().ok();
 
-        let mut users: Vec<UserDTO> = Vec::with_capacity(5);
+        let total_users = 5;
+        let mut users: Vec<UserDTO> = Vec::with_capacity(total_users);
 
-        for i in 0..10 {
+        for i in 0..total_users as usize {
             let mut user = UserModels::complete_user_model_hashed();
             user.email += &i.to_string();
 
@@ -1806,11 +2183,227 @@ mod integration_specs {
         let bytes =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
 
-        for i in 0..5 {
+        for i in 0..total_users as usize {
             assert!(bytes.contains(&users[i].id));
             assert!(bytes.contains(&users[i].name));
             assert!(bytes.contains(&users[i].email));
             assert!(bytes.contains(&users[i].created_at.chars().take(10).collect::<String>()));
+
+            FunctionalTester::delete_from_database(
+                PostgresModels::postgres_success(),
+                RedisModels::pool_success().await,
+                TablesEnum::Users,
+                Some(vec![("email", &users[i].email)]),
+            )
+            .await;
+        }
+    }
+
+    #[test]
+    async fn _list_users_offset_query_params() {
+        dotenv::dotenv().ok();
+
+        let total_users = 5;
+        let mut users: Vec<UserDTO> = Vec::with_capacity(total_users);
+
+        for i in 0..total_users {
+            let mut user = UserModels::complete_user_model_hashed();
+            user.email += &i.to_string();
+
+            users.push(
+                FunctionalTester::insert_in_db_users(PostgresModels::postgres_success(), user)
+                    .await,
+            );
+        }
+
+        let jwt = JwtModels::access_jwt_model(users[0].id.clone());
+        let offset = 2;
+        let resp = user_call_http_before(
+            UserTypes::ListUsersDTO(
+                Query(QueryParamsModels::offset_query_params_model(offset)),
+                Some(jwt),
+            ),
+            false,
+        )
+        .await;
+        assert_eq!(resp.status(), 200);
+
+        let bytes =
+            String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
+
+        for i in 0..total_users - offset as usize {
+            assert!(bytes.contains(&users[i].email));
+
+            FunctionalTester::delete_from_database(
+                PostgresModels::postgres_success(),
+                RedisModels::pool_success().await,
+                TablesEnum::Users,
+                Some(vec![("email", &users[i].email)]),
+            )
+            .await;
+        }
+
+        for i in total_users - offset as usize..total_users {
+            assert!(!bytes.contains(&users[i].email));
+
+            FunctionalTester::delete_from_database(
+                PostgresModels::postgres_success(),
+                RedisModels::pool_success().await,
+                TablesEnum::Users,
+                Some(vec![("email", &users[i].email)]),
+            )
+            .await;
+        }
+    }
+
+    #[test]
+    async fn _list_users_limit_query_params() {
+        dotenv::dotenv().ok();
+
+        let total_users = 5;
+        let mut users: Vec<UserDTO> = Vec::with_capacity(total_users);
+
+        for i in 0..total_users as usize {
+            let mut user = UserModels::complete_user_model_hashed();
+            user.email += &i.to_string();
+
+            users.push(
+                FunctionalTester::insert_in_db_users(PostgresModels::postgres_success(), user)
+                    .await,
+            );
+        }
+
+        let jwt = JwtModels::access_jwt_model(users[0].id.clone());
+        let limit = 2;
+        let resp = user_call_http_before(
+            UserTypes::ListUsersDTO(
+                Query(QueryParamsModels::limit_query_params_model(limit)),
+                Some(jwt),
+            ),
+            false,
+        )
+        .await;
+        assert_eq!(resp.status(), 200);
+
+        let bytes =
+            String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
+
+        for i in total_users - limit as usize..total_users {
+            assert!(bytes.contains(&users[i].email));
+
+            FunctionalTester::delete_from_database(
+                PostgresModels::postgres_success(),
+                RedisModels::pool_success().await,
+                TablesEnum::Users,
+                Some(vec![("email", &users[i].email)]),
+            )
+            .await;
+        }
+
+        for i in 0..limit as usize {
+            assert!(!bytes.contains(&users[i].email));
+
+            FunctionalTester::delete_from_database(
+                PostgresModels::postgres_success(),
+                RedisModels::pool_success().await,
+                TablesEnum::Users,
+                Some(vec![("email", &users[i].email)]),
+            )
+            .await;
+        }
+    }
+
+    #[test]
+    async fn _list_users_order_by_query_params() {
+        dotenv::dotenv().ok();
+
+        let total_users = 5;
+        let mut users: Vec<UserDTO> = Vec::with_capacity(total_users);
+
+        for i in 0..total_users as usize {
+            let mut user = UserModels::complete_user_model_hashed();
+            user.email += &i.to_string();
+
+            users.push(
+                FunctionalTester::insert_in_db_users(PostgresModels::postgres_success(), user)
+                    .await,
+            );
+        }
+
+        let jwt = JwtModels::access_jwt_model(users[0].id.clone());
+        let resp = user_call_http_before(
+            UserTypes::ListUsersDTO(
+                Query(QueryParamsModels::order_by_query_params_model("created_at")),
+                Some(jwt),
+            ),
+            false,
+        )
+        .await;
+        assert_eq!(resp.status(), 200);
+
+        let bytes: String =
+            String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
+
+        let bytes_serde: ListUserControllerResponse = serde_json::from_str(&bytes).unwrap();
+
+        for i in 0..total_users - 1 as usize {
+            assert!(bytes.contains(&users[i].id));
+            assert!(bytes.contains(&users[i].name));
+            assert!(bytes.contains(&users[i].email));
+            assert!(bytes.contains(&users[i].created_at.chars().take(10).collect::<String>()));
+
+            assert!(bytes_serde.users[i].created_at > bytes_serde.users[i + 1].created_at);
+
+            FunctionalTester::delete_from_database(
+                PostgresModels::postgres_success(),
+                RedisModels::pool_success().await,
+                TablesEnum::Users,
+                Some(vec![("email", &users[i].email)]),
+            )
+            .await;
+        }
+    }
+
+    #[test]
+    async fn _list_users_order_direction_query_params() {
+        dotenv::dotenv().ok();
+
+        let total_users = 5;
+        let mut users: Vec<UserDTO> = Vec::with_capacity(total_users);
+
+        for i in 0..total_users as usize {
+            let mut user = UserModels::complete_user_model_hashed();
+            user.email += &i.to_string();
+
+            users.push(
+                FunctionalTester::insert_in_db_users(PostgresModels::postgres_success(), user)
+                    .await,
+            );
+        }
+
+        let jwt = JwtModels::access_jwt_model(users[0].id.clone());
+        let resp = user_call_http_before(
+            UserTypes::ListUsersDTO(
+                Query(QueryParamsModels::order_direction_query_params_model("asc")),
+                Some(jwt),
+            ),
+            false,
+        )
+        .await;
+        assert_eq!(resp.status(), 200);
+
+        let bytes: String =
+            String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
+
+        let bytes_serde: ListUserControllerResponse = serde_json::from_str(&bytes).unwrap();
+
+        for i in 0..total_users - 1 as usize {
+            assert!(bytes.contains(&users[i].id));
+            assert!(bytes.contains(&users[i].name));
+            assert!(bytes.contains(&users[i].email));
+            assert!(bytes.contains(&users[i].created_at.chars().take(10).collect::<String>()));
+
+            assert!(bytes_serde.users[i].created_at < bytes_serde.users[i + 1].created_at);
 
             FunctionalTester::delete_from_database(
                 PostgresModels::postgres_success(),
