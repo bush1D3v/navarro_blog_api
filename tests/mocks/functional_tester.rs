@@ -1,4 +1,4 @@
-use super::{enums::db_table::TablesEnum, models::user::complete_user_model};
+use super::{enums::db_table::TablesEnum, models::user::UserModels};
 use navarro_blog_api::modules::user::user_dtos::UserDTO;
 use sql_builder::{quote, SqlBuilder};
 
@@ -172,19 +172,19 @@ impl FunctionalTester {
         };
 
         if user_body.id == *"" {
-            pg_user.id = complete_user_model().id;
+            pg_user.id = UserModels::complete_user_model().id;
         }
         if user_body.name == *"" {
-            pg_user.name = complete_user_model().name;
+            pg_user.name = UserModels::complete_user_model().name;
         }
         if user_body.email == *"" {
-            pg_user.email = complete_user_model().email;
+            pg_user.email = UserModels::complete_user_model().email;
         }
         if user_body.password == *"" {
-            pg_user.password = complete_user_model().password;
+            pg_user.password = UserModels::complete_user_model().password;
         }
         if user_body.created_at == *"" {
-            pg_user.created_at = complete_user_model().created_at;
+            pg_user.created_at = UserModels::complete_user_model().created_at;
         }
 
         let client = pg_pool.get().await.unwrap();
