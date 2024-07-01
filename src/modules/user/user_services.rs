@@ -1,15 +1,18 @@
 use super::{
-    user_dtos::{CreateUserDTO, LoginUserDTO, UserDTO},
+    user_dtos::{CreateUserDTO, DetailUserDTO, LoginUserDTO, UserDTO},
     user_providers::{email_exists, email_not_exists},
     user_queues::CreateUserAppQueue,
     user_repositories::{
         detail_user_repository, get_user_salt_repository, insert_user_repository,
-        login_user_repository,
+        list_users_repository, login_user_repository,
     },
 };
-use crate::{shared::structs::jwt_claims::Claims, utils::error_construct::error_construct};
+use crate::{
+    shared::structs::{jwt_claims::Claims, query_params::QueryParams},
+    utils::error_construct::error_construct,
+};
 use actix_web::{
-    web::{Data, Json},
+    web::{Data, Json, Query},
     HttpResponse,
 };
 use bcrypt::{hash, verify, DEFAULT_COST};
@@ -318,6 +321,43 @@ pub async fn detail_user_service(
                 String::from("not found"),
                 e.to_string(),
                 Some(user_id),
+                None,
+                None,
+            ))),
+            ErrorKind::ConnectionAborted => {
+                Err(HttpResponse::ServiceUnavailable().json(error_construct(
+                    String::from("database"),
+                    String::from("service unavailable"),
+                    e.to_string(),
+                    None,
+                    None,
+                    None,
+                )))
+            }
+            _ => Err(HttpResponse::InternalServerError().json(error_construct(
+                String::from("database"),
+                String::from("internal server error"),
+                e.to_string(),
+                None,
+                None,
+                None,
+            ))),
+        },
+    }
+}
+
+pub async fn list_users_service(
+    pg_pool: Data<deadpool_postgres::Pool>,
+    query_params: Query<QueryParams>,
+) -> Result<Vec<DetailUserDTO>, HttpResponse> {
+    match list_users_repository(pg_pool, query_params).await {
+        Ok(user) => Ok(user),
+        Err(e) => match e.kind() {
+            ErrorKind::NotFound => Err(HttpResponse::NotFound().json(error_construct(
+                String::from("users"),
+                String::from("not found"),
+                e.to_string(),
+                None,
                 None,
                 None,
             ))),
