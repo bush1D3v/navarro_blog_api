@@ -1,6 +1,6 @@
 use actix_web::{http::KeepAlive, web, App, HttpServer};
 use config::{api_doc::api_doc, cors::cors};
-use infra::{postgres::postgres, redis::Redis};
+use infra::{postgres::Postgres, redis::Redis};
 use modules::user::{
     user_controllers::user_controllers_module,
     user_queues::{user_flush_queue, CreateUserAppQueue},
@@ -20,7 +20,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     dotenv::dotenv().ok();
 
     let redis_pool = Redis::pool().await;
-    let pool = postgres();
+    let pool = Postgres::pool();
     let pool_async = pool.clone();
     let queue = Arc::new(CreateUserAppQueue::new());
     let queue_async = queue.clone();
