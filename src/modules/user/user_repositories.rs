@@ -1,12 +1,13 @@
-use crate::shared::exceptions::custom_error_to_io_error_kind::{
-    custom_error_to_io_error_kind, CustomError,
+use crate::shared::{
+    exceptions::custom_error_to_io_error_kind::{custom_error_to_io_error_kind, CustomError},
+    structs::query_params::QueryParams,
 };
 
 use super::{
-    user_dtos::{CreateUserDTO, UserDTO},
+    user_dtos::{CreateUserDTO, DetailUserDTO, UserDTO},
     user_queues::CreateUserAppQueue,
 };
-use actix_web::web::{Data, Json};
+use actix_web::web::{Data, Json, Query};
 use serde::Serialize;
 use sql_builder::quote;
 use std::{io::ErrorKind, sync::Arc};
@@ -245,4 +246,98 @@ pub async fn detail_user_repository(
         created_at: created_at.to_string(),
         password: rows[0].get("password"),
     })
+}
+
+pub async fn list_users_repository(
+    pg_pool: Data<deadpool_postgres::Pool>,
+    query_params: Query<QueryParams>,
+) -> Result<Vec<DetailUserDTO>, std::io::Error> {
+    let order_by = query_params
+        .order_by
+        .clone()
+        .unwrap_or(String::from("created_at"));
+    let order_direction = query_params
+        .order_direction
+        .clone()
+        .unwrap_or(String::from("desc"));
+
+    let mut sql_builder = sql_builder::SqlBuilder::select_from("users");
+    sql_builder.fields(&["id", "name", "email", "created_at"]);
+    sql_builder.order_by(
+        order_by,
+        match order_direction.as_str() {
+            "asc" => false,
+            "desc" => true,
+            _ => true,
+        },
+    );
+    sql_builder.limit(query_params.limit.unwrap_or(20));
+    sql_builder.offset(query_params.offset.unwrap_or(0));
+
+    let mut conn = match pg_pool.get().await {
+        Ok(x) => x,
+        Err(e) => {
+            return Err(std::io::Error::new(
+                custom_error_to_io_error_kind(CustomError::PoolError),
+                e,
+            ))
+        }
+    };
+    let transaction = match conn.transaction().await {
+        Ok(x) => x,
+        Err(e) => {
+            return Err(std::io::Error::new(
+                custom_error_to_io_error_kind(CustomError::TokioPostgres),
+                e,
+            ))
+        }
+    };
+    let sql = match sql_builder.sql() {
+        Ok(x) => x,
+        Err(e) => {
+            return Err(std::io::Error::new(
+                custom_error_to_io_error_kind(CustomError::AnyhowError),
+                e,
+            ))
+        }
+    };
+    let rows = match transaction.query(sql.as_str(), &[]).await {
+        Ok(x) => x,
+        Err(e) => {
+            return Err(std::io::Error::new(
+                custom_error_to_io_error_kind(CustomError::TokioPostgres),
+                e,
+            ))
+        }
+    };
+    match transaction.commit().await {
+        Ok(_) => (),
+        Err(e) => {
+            return Err(std::io::Error::new(
+                custom_error_to_io_error_kind(CustomError::TokioPostgres),
+                e,
+            ))
+        }
+    };
+
+    if rows.is_empty() {
+        return Err(std::io::Error::new(
+            ErrorKind::NotFound,
+            "Não foram encontrados usuários.",
+        ));
+    }
+
+    let mut users: Vec<DetailUserDTO> = Vec::new();
+    for row in rows {
+        let user_id: uuid::Uuid = row.get("id");
+        let created_at: chrono::DateTime<chrono::Utc> = row.get("created_at");
+        let user = DetailUserDTO {
+            id: user_id.to_string(),
+            name: row.get("name"),
+            email: row.get("email"),
+            created_at: created_at.to_string(),
+        };
+        users.push(user);
+    }
+    Ok(users)
 }
