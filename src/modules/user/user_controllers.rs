@@ -13,7 +13,7 @@ use crate::{
     shared::structs::query_params::QueryParams,
     utils::error_construct::error_construct,
 };
-use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
+use actix_web::{get, options, post, web, HttpRequest, HttpResponse, Responder};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use utoipa::ToSchema;
@@ -25,6 +25,7 @@ pub fn user_controllers_module() -> actix_web::Scope {
         .service(login_user)
         .service(list_users)
         .service(detail_user)
+        .service(user_options)
 }
 
 #[utoipa::path(
@@ -493,4 +494,24 @@ async fn detail_user(
             Err(e) => e,
         },
     }
+}
+
+#[utoipa::path(
+    tag = "user",
+    path = "/user",
+    responses((
+        status = 200, content_type = "application/json", headers((
+            "access-control-allow-methods" = Vec<String>, description = "Métodos HTTP suportados pela entidade"
+        )),
+        description = "Retorna quais métodos HTTP são suportados nas rotas da entidade (OK)",
+    ))
+)]
+#[options("")]
+async fn user_options() -> impl Responder {
+    HttpResponse::Ok()
+        .append_header((
+            "Access-Control-Allow-Methods",
+            "GET, POST, PATCH, PUT, DELETE, OPTIONS",
+        ))
+        .finish()
 }
