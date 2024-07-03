@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use validator::Validate;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct UserDTO {
     pub id: String,
     pub name: String,
@@ -19,7 +19,7 @@ static RE_PASSWORD: Lazy<Regex> = Lazy::new(|| Regex::new("^.*?[@$!%*?&].*$").un
 static RE_EMAIL: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$").unwrap());
 
-#[derive(Serialize, Deserialize, Debug, ToSchema, Validate, Clone)]
+#[derive(Serialize, Deserialize, ToSchema, Validate, Clone)]
 pub struct CreateUserDTO {
     #[validate(
 		length(
@@ -62,7 +62,7 @@ pub struct CreateUserDTO {
     pub password: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, ToSchema, Validate, Clone)]
+#[derive(Serialize, Deserialize, ToSchema, Validate, Clone)]
 pub struct LoginUserDTO {
     #[validate(
 		email(message = "O e-mail deve ser um endereço válido."),
