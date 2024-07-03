@@ -3,6 +3,7 @@ use crate::{
         user_controllers::{
             DetailUserControllerResponse, ListUserControllerResponse, LoginUserControllerResponse,
             __path_detail_user, __path_insert_user, __path_list_users, __path_login_user,
+            __path_user_options,
         },
         user_dtos::{CreateUserDTO, DetailUserDTO, LoginUserDTO},
     },
@@ -20,7 +21,7 @@ use utoipa_swagger_ui::SwaggerUi;
 pub fn api_doc() -> SwaggerUi {
     #[derive(OpenApi)]
     #[openapi(
-		paths(insert_user, login_user, detail_user, list_users),
+		paths(user_options, insert_user, login_user, detail_user, list_users),
 		components(
 			schemas(
 				CreateUserDTO,
@@ -31,7 +32,7 @@ pub fn api_doc() -> SwaggerUi {
                 DetailUserControllerResponse,
                 DetailUserDTO,
                 ListUserControllerResponse,
-                QueryParams
+                QueryParams,
 			)
 		),
 		modifiers(& SecurityModifier),
