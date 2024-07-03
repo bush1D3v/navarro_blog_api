@@ -9,7 +9,7 @@ pub fn cors() -> Cors {
             env::var("BASE_URL").unwrap(),
             env::var("HTTP_PORT").unwrap()
         ))
-        .allowed_methods(vec!["GET", "POST", "PATCH", "DELETE"])
+        .allowed_methods(vec!["GET", "POST", "PATCH", "DELETE", "OPTIONS", "PUT"])
         .allowed_headers(vec![http::header::AUTHORIZATION, http::header::ACCEPT])
         .allowed_header(http::header::CONTENT_TYPE)
         .max_age(3600)
