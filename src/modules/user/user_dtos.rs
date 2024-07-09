@@ -98,3 +98,20 @@ pub struct DetailUserDTO {
     pub email: String,
     pub created_at: String,
 }
+
+#[derive(ToSchema, Serialize, Deserialize, Clone, Validate)]
+pub struct DeleteUserDTO {
+    #[validate(
+		length(
+			min = 8,
+			max = 255,
+			message = "A senha deve ter pelo menos 8 caracteres."
+		),
+		regex(
+			path = * RE_PASSWORD,
+			message = "A senha deve ter pelo menos 1 caractere especial."
+		)
+	)]
+    #[serde(default)]
+    pub password: String,
+}
