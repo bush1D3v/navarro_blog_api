@@ -2,9 +2,9 @@ use crate::{shared::structs::jwt_claims::Claims, utils::error_construct::error_c
 use actix_web::HttpResponse;
 use std::env;
 
-pub struct JWT {}
+pub struct Jwt {}
 
-impl JWT {
+impl Jwt {
     pub fn refresh_token_constructor(user_id: String) -> Result<String, HttpResponse> {
         let claims = Claims {
             sub: user_id,
@@ -18,16 +18,14 @@ impl JWT {
             &jsonwebtoken::EncodingKey::from_secret(env::var("JWT_REFRESH_KEY").unwrap().as_ref()),
         ) {
             Ok(token) => Ok(token),
-            Err(e) => {
-                return Err(HttpResponse::InternalServerError().json(error_construct(
-                    String::from("jsonwebtoken"),
-                    String::from("internal server error"),
-                    e.to_string(),
-                    None,
-                    None,
-                    None,
-                )))
-            }
+            Err(e) => Err(HttpResponse::InternalServerError().json(error_construct(
+                String::from("jsonwebtoken"),
+                String::from("internal server error"),
+                e.to_string(),
+                None,
+                None,
+                None,
+            ))),
         }
     }
 
@@ -44,16 +42,14 @@ impl JWT {
             &jsonwebtoken::EncodingKey::from_secret(env::var("JWT_ACCESS_KEY").unwrap().as_ref()),
         ) {
             Ok(token) => Ok(token),
-            Err(e) => {
-                return Err(HttpResponse::InternalServerError().json(error_construct(
-                    String::from("jsonwebtoken"),
-                    String::from("internal server error"),
-                    e.to_string(),
-                    None,
-                    None,
-                    None,
-                )))
-            }
+            Err(e) => Err(HttpResponse::InternalServerError().json(error_construct(
+                String::from("jsonwebtoken"),
+                String::from("internal server error"),
+                e.to_string(),
+                None,
+                None,
+                None,
+            ))),
         }
     }
 
