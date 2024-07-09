@@ -1,126 +1,52 @@
-use crate::shared::exceptions::custom_error_to_io_error_kind::{
-    custom_error_to_io_error_kind, CustomError,
+use crate::utils::{
+    error_construct::error_construct, query_constructor_executor::query_constructor_executor,
 };
-use actix_web::web::Data;
+use actix_web::{web::Data, HttpResponse};
 use deadpool_postgres::Pool;
 use sql_builder::{quote, SqlBuilder};
 
-pub async fn email_exists(pool: Data<Pool>, email: String) -> Result<(), std::io::Error> {
+pub async fn email_exists(pg_pool: Data<Pool>, email: String) -> Result<(), HttpResponse> {
     let mut sql_builder = SqlBuilder::select_from("users");
     sql_builder.field("id");
     sql_builder.or_where_eq("email", &quote(&email));
 
-    let mut conn = match pool.get().await {
+    let rows = match query_constructor_executor(pg_pool, sql_builder).await {
         Ok(x) => x,
-        Err(e) => {
-            return Err(std::io::Error::new(
-                custom_error_to_io_error_kind(CustomError::PoolError),
-                e,
-            ))
-        }
-    };
-    let transaction = match conn.transaction().await {
-        Ok(x) => x,
-        Err(e) => {
-            return Err(std::io::Error::new(
-                custom_error_to_io_error_kind(CustomError::TokioPostgres),
-                e,
-            ))
-        }
-    };
-    let sql = match sql_builder.sql() {
-        Ok(x) => x,
-        Err(e) => {
-            return Err(std::io::Error::new(
-                custom_error_to_io_error_kind(CustomError::AnyhowError),
-                e,
-            ))
-        }
+        Err(e) => return Err(e),
     };
 
-    let rows = match transaction.query(sql.as_str(), &[]).await {
-        Ok(x) => x,
-        Err(e) => {
-            return Err(std::io::Error::new(
-                custom_error_to_io_error_kind(CustomError::TokioPostgres),
-                e,
-            ))
-        }
-    };
-    match transaction.commit().await {
-        Ok(_) => (),
-        Err(e) => {
-            return Err(std::io::Error::new(
-                custom_error_to_io_error_kind(CustomError::TokioPostgres),
-                e,
-            ))
-        }
-    };
     if !rows.is_empty() {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::InvalidInput,
-            "Este e-mail já está sendo utilizado por outro usuário.",
-        ));
+        return Err(HttpResponse::Conflict().json(error_construct(
+            String::from("email"),
+            String::from("conflict"),
+            String::from("Este e-mail já está sendo utilizado por outro usuário."),
+            Some(email),
+            None,
+            None,
+        )));
     }
     Ok(())
 }
 
-pub async fn email_not_exists(pool: Data<Pool>, email: String) -> Result<(), std::io::Error> {
+pub async fn email_not_exists(pg_pool: Data<Pool>, email: String) -> Result<(), HttpResponse> {
     let mut sql_builder = SqlBuilder::select_from("users");
     sql_builder.field("id");
     sql_builder.or_where_eq("email", &quote(&email));
 
-    let mut conn = match pool.get().await {
+    let rows = match query_constructor_executor(pg_pool, sql_builder).await {
         Ok(x) => x,
-        Err(e) => {
-            return Err(std::io::Error::new(
-                custom_error_to_io_error_kind(CustomError::PoolError),
-                e,
-            ))
-        }
-    };
-    let transaction = match conn.transaction().await {
-        Ok(x) => x,
-        Err(e) => {
-            return Err(std::io::Error::new(
-                custom_error_to_io_error_kind(CustomError::TokioPostgres),
-                e,
-            ))
-        }
-    };
-    let sql = match sql_builder.sql() {
-        Ok(x) => x,
-        Err(e) => {
-            return Err(std::io::Error::new(
-                custom_error_to_io_error_kind(CustomError::AnyhowError),
-                e,
-            ))
-        }
+        Err(e) => return Err(e),
     };
 
-    let rows = match transaction.query(sql.as_str(), &[]).await {
-        Ok(x) => x,
-        Err(e) => {
-            return Err(std::io::Error::new(
-                custom_error_to_io_error_kind(CustomError::TokioPostgres),
-                e,
-            ))
-        }
-    };
-    match transaction.commit().await {
-        Ok(_) => (),
-        Err(e) => {
-            return Err(std::io::Error::new(
-                custom_error_to_io_error_kind(CustomError::TokioPostgres),
-                e,
-            ))
-        }
-    };
     if rows.is_empty() {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            "Não foi encontrado um usuário com este e-mail.",
-        ));
+        return Err(HttpResponse::NotFound().json(error_construct(
+            String::from("email"),
+            String::from("not found"),
+            String::from("Não foi encontrado um usuário com este e-mail."),
+            Some(email),
+            None,
+            None,
+        )));
     }
     Ok(())
 }
