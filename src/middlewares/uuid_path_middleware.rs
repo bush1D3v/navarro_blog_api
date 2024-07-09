@@ -6,7 +6,6 @@ pub fn uuid_path_middleware(
     id: actix_web::web::Path<String>,
     path_name: &str,
 ) -> Result<String, HttpResponse> {
-    println!("{}", id);
     let uuid = match id.trim().split('/').last() {
         Some(uuid) => uuid,
         None => {
