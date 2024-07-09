@@ -16,14 +16,15 @@ env:
   DB_NAME: ${{secrets.DB_NAME}}
   DB_USER: ${{secrets.DB_USER}}
   DB_PASSWORD: ${{secrets.DB_PASSWORD}}
-  REDIS_HOST: ${{secrets.REDIS_HOST}}
-  REDIS_PORT: ${{secrets.REDIS_PORT}}
   DB_POOL_SIZE: ${{secrets.DB_POOL_SIZE}}
   JWT_REFRESH_KEY: ${{secrets.JWT_REFRESH_KEY}}
   JWT_ACCESS_KEY: ${{secrets.JWT_ACCESS_KEY}}
+  REDIS_HOST: ${{secrets.REDIS_HOST}}
+  REDIS_PORT: ${{secrets.REDIS_PORT}}
   REDIS_NUMBER: ${{secrets.REDIS_NUMBER}}
-  REDIS_PASSWORD: ${{secrets.REDIS_PASSWORD}}
   REDIS_USER: ${{secrets.REDIS_USER}}
+  REDIS_PASSWORD: ${{secrets.REDIS_PASSWORD}}
+  REDIS_POOL_SIZE: ${{secrets.REDIS_POOL_SIZE}}
 
 jobs:
   build:
@@ -52,6 +53,7 @@ jobs:
           REDIS_NUMBER: ${{ env.REDIS_NUMBER }}
           REDIS_PASSWORD: ${{env.REDIS_PASSWORD}}
           REDIS_USER: ${{env.REDIS_USER}}
+          REDIS_POOL_SIZE: ${{env.REDIS_PORT}}
         options: --entrypoint redis-server
 
     steps:
