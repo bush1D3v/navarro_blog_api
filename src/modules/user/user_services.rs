@@ -2,118 +2,53 @@ use super::{
     user_dtos::{CreateUserDTO, DetailUserDTO, LoginUserDTO, UserDTO},
     user_providers::{email_exists, email_not_exists},
     user_queues::CreateUserAppQueue,
-    user_repositories::{
-        detail_user_repository, get_user_salt_repository, insert_user_repository,
-        list_users_repository, login_user_repository,
-    },
+    user_repositories::*,
 };
-use crate::{
-    shared::structs::{jwt_claims::Claims, query_params::QueryParams},
-    utils::error_construct::error_construct,
+use crate::shared::{
+    structs::query_params::QueryParams,
+    treaties::{
+        bcrypt_treated::{Bcrypt, BcryptVerifyData},
+        jwt_treated::JWT,
+        strip_suffix_treated::StripSuffix,
+    },
 };
 use actix_web::{
     web::{Data, Json, Query},
     HttpResponse,
 };
-use bcrypt::{hash, verify, DEFAULT_COST};
-use std::{env, io::ErrorKind, sync::Arc};
-
-pub struct InsertUserServiceResponse {
-    pub user: UserDTO,
-    pub user_id: String,
-}
+use std::sync::Arc;
 
 pub async fn insert_user_service(
     queue: Data<Arc<CreateUserAppQueue>>,
     pg_pool: Data<deadpool_postgres::Pool>,
     mut body: Json<CreateUserDTO>,
-) -> Result<InsertUserServiceResponse, HttpResponse> {
+) -> Result<UserDTO, HttpResponse> {
     match email_exists(pg_pool.clone(), body.email.clone()).await {
         Ok(_) => (),
-        Err(e) => {
-            return match e.kind() {
-                ErrorKind::InvalidInput => Err(HttpResponse::Conflict().json(error_construct(
-                    String::from("email"),
-                    String::from("conflict"),
-                    e.to_string(),
-                    Some(body.email.clone()),
-                    None,
-                    None,
-                ))),
-                ErrorKind::ConnectionAborted => {
-                    Err(HttpResponse::ServiceUnavailable().json(error_construct(
-                        String::from("database"),
-                        String::from("service unavailable"),
-                        e.to_string(),
-                        None,
-                        None,
-                        None,
-                    )))
-                }
-                _ => Err(HttpResponse::InternalServerError().json(error_construct(
-                    String::from("server"),
-                    String::from("internal server error"),
-                    e.to_string(),
-                    None,
-                    None,
-                    None,
-                ))),
-            }
-        }
+        Err(e) => return Err(e),
     };
     let user_id = uuid::Uuid::new_v4().to_string();
-    body.password = match hash(&body.password, DEFAULT_COST - 4) {
+    body.password = match Bcrypt::hash(&body.password) {
         Ok(hash) => hash,
-        Err(e) => {
-            return Err(HttpResponse::InternalServerError().json(error_construct(
-                String::from("bcrypt"),
-                String::from("internal server error"),
-                e.to_string(),
-                None,
-                None,
-                None,
-            )))
-        }
+        Err(e) => return Err(e),
     };
     let user_salt = uuid::Uuid::new_v4().to_string();
     body.password = format!("{}{}", body.password, user_salt);
 
     match insert_user_repository(queue.clone(), pg_pool, body, user_id.clone(), user_salt).await {
-        Ok(user) => Ok(InsertUserServiceResponse { user, user_id }),
-        Err(e) => match e.kind() {
-            ErrorKind::InvalidInput => {
-                Err(HttpResponse::InternalServerError().json(error_construct(
-                    String::from("bcrypt"),
-                    String::from("internal server error"),
-                    e.to_string(),
-                    None,
-                    None,
-                    None,
-                )))
-            }
-            ErrorKind::ConnectionAborted => {
-                Err(HttpResponse::ServiceUnavailable().json(error_construct(
-                    String::from("database"),
-                    String::from("service unavailable"),
-                    e.to_string(),
-                    None,
-                    None,
-                    None,
-                )))
-            }
-            _ => Err(HttpResponse::InternalServerError().json(error_construct(
-                String::from("server"),
-                String::from("internal server error"),
-                e.to_string(),
-                None,
-                None,
-                None,
-            ))),
-        },
+        Ok(user) => Ok(UserDTO {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            password: user.password,
+            created_at: user.created_at,
+        }),
+        Err(e) => Err(e),
     }
 }
 
 pub struct LoginUserServiceResponse {
+    pub user: UserDTO,
     pub refresh_token: String,
     pub refresh_expires_in: i64,
     pub access_token: String,
@@ -128,184 +63,46 @@ pub async fn login_user_service(
     if !email_found_in_redis {
         match email_not_exists(pg_pool.clone(), body.email.clone()).await {
             Ok(_) => (),
-            Err(e) => {
-                return match e.kind() {
-                    ErrorKind::NotFound => Err(HttpResponse::NotFound().json(error_construct(
-                        String::from("email"),
-                        String::from("not found"),
-                        e.to_string(),
-                        Some(body.email.clone()),
-                        None,
-                        None,
-                    ))),
-                    ErrorKind::ConnectionAborted => {
-                        Err(HttpResponse::ServiceUnavailable().json(error_construct(
-                            String::from("database"),
-                            String::from("service unavailable"),
-                            e.to_string(),
-                            None,
-                            None,
-                            None,
-                        )))
-                    }
-                    _ => Err(HttpResponse::InternalServerError().json(error_construct(
-                        String::from("server"),
-                        String::from("internal server error"),
-                        e.to_string(),
-                        None,
-                        None,
-                        None,
-                    ))),
-                }
-            }
+            Err(e) => return Err(e),
         }
     }
     match login_user_repository(body.email.clone(), pg_pool.clone()).await {
-        Ok(repository_response) => {
-            let user_salt =
-                match get_user_salt_repository(repository_response.id.clone(), pg_pool.clone())
-                    .await
-                {
-                    Ok(user_salt) => user_salt,
-                    Err(e) => {
-                        return match e.kind() {
-                            ErrorKind::ConnectionAborted => Err(HttpResponse::ServiceUnavailable()
-                                .json(error_construct(
-                                    String::from("database"),
-                                    String::from("service unavailable"),
-                                    e.to_string(),
-                                    None,
-                                    None,
-                                    None,
-                                ))),
-                            _ => Err(HttpResponse::InternalServerError().json(error_construct(
-                                String::from("server"),
-                                String::from("internal server error"),
-                                e.to_string(),
-                                None,
-                                None,
-                                None,
-                            ))),
-                        }
-                    }
-                };
-            let password_without_salt = match repository_response.password.strip_suffix(&user_salt)
-            {
-                Some(password) => password,
-                None => {
-                    return Err(HttpResponse::InternalServerError().json(error_construct(
-                        String::from("server"),
-                        String::from("internal server error"),
-                        String::from("Erro ao extrair o salt do usuário."),
-                        None,
-                        None,
-                        None,
-                    )))
-                }
+        Ok(user) => {
+            let user_salt = match get_user_salt_repository(user.id.clone(), pg_pool.clone()).await {
+                Ok(user_salt) => user_salt,
+                Err(e) => return Err(e),
             };
-            match verify(body.password.clone(), password_without_salt) {
-                Ok(true) => {
-                    let refresh_expires_in: i64 = 7;
-                    let mut claims = Claims {
-                        sub: repository_response.id.clone(),
-                        role: String::from("admin"),
-                        exp: (chrono::Utc::now() + chrono::Duration::days(refresh_expires_in))
-                            .timestamp() as usize,
+            let password_without_salt =
+                match StripSuffix::strip_suffix(user.password.clone(), &user_salt) {
+                    Ok(password_without_salt) => password_without_salt,
+                    Err(e) => return Err(e),
+                };
+            match Bcrypt::verify(
+                body.password.clone(),
+                password_without_salt.as_str(),
+                BcryptVerifyData::EmailPassword(body.email.clone(), body.password.clone()),
+            ) {
+                Ok(_) => {
+                    let refresh_token = match JWT::refresh_token_constructor(user.id.clone()) {
+                        Ok(refresh_token) => refresh_token,
+                        Err(e) => return Err(e),
                     };
-                    let refresh_token = match jsonwebtoken::encode(
-                        &jsonwebtoken::Header::default(),
-                        &claims,
-                        &jsonwebtoken::EncodingKey::from_secret(
-                            env::var("JWT_REFRESH_KEY").unwrap().as_ref(),
-                        ),
-                    ) {
-                        Ok(token) => token,
-                        Err(e) => {
-                            return Err(HttpResponse::InternalServerError().json(error_construct(
-                                String::from("jsonwebtoken"),
-                                String::from("internal server error"),
-                                e.to_string(),
-                                None,
-                                None,
-                                None,
-                            )))
-                        }
-                    };
-                    let access_expires_in: i64 = 30;
-                    claims.exp =
-                        (chrono::Utc::now() + chrono::Duration::minutes(30)).timestamp() as usize;
-                    let access_token = match jsonwebtoken::encode(
-                        &jsonwebtoken::Header::default(),
-                        &claims,
-                        &jsonwebtoken::EncodingKey::from_secret(
-                            env::var("JWT_ACCESS_KEY").unwrap().as_ref(),
-                        ),
-                    ) {
-                        Ok(token) => token,
-                        Err(e) => {
-                            return Err(HttpResponse::InternalServerError().json(error_construct(
-                                String::from("jsonwebtoken"),
-                                String::from("internal server error"),
-                                e.to_string(),
-                                None,
-                                None,
-                                None,
-                            )))
-                        }
+                    let access_token = match JWT::access_token_constructor(user.id.clone()) {
+                        Ok(access_token) => access_token,
+                        Err(e) => return Err(e),
                     };
                     Ok(LoginUserServiceResponse {
+                        user,
                         refresh_token,
-                        refresh_expires_in: refresh_expires_in * 60 * 60 * 24,
+                        refresh_expires_in: 7 * 60 * 60 * 24,
                         access_token,
-                        access_expires_in: access_expires_in * 60,
+                        access_expires_in: 30 * 60,
                     })
                 }
-                Ok(false) => Err(HttpResponse::Unauthorized().json(error_construct(
-                    String::from("email/password"),
-                    String::from("unauthorized"),
-                    String::from("E-mail e/ou senha incorretos."),
-                    None,
-                    None,
-                    None,
-                ))),
-                Err(e) => Err(HttpResponse::InternalServerError().json(error_construct(
-                    String::from("bcrypt"),
-                    String::from("internal server error"),
-                    e.to_string(),
-                    None,
-                    None,
-                    None,
-                ))),
+                Err(e) => Err(e),
             }
         }
-        Err(e) => match e.kind() {
-            ErrorKind::NotFound => Err(HttpResponse::NotFound().json(error_construct(
-                String::from("user"),
-                String::from("not found"),
-                e.to_string(),
-                Some(body.email.clone()),
-                None,
-                None,
-            ))),
-            ErrorKind::ConnectionAborted => {
-                Err(HttpResponse::ServiceUnavailable().json(error_construct(
-                    String::from("database"),
-                    String::from("service unavailable"),
-                    e.to_string(),
-                    None,
-                    None,
-                    None,
-                )))
-            }
-            _ => Err(HttpResponse::InternalServerError().json(error_construct(
-                String::from("database"),
-                String::from("internal server error"),
-                e.to_string(),
-                None,
-                None,
-                None,
-            ))),
-        },
+        Err(e) => Err(e),
     }
 }
 
@@ -315,34 +112,7 @@ pub async fn detail_user_service(
 ) -> Result<UserDTO, HttpResponse> {
     match detail_user_repository(pg_pool, user_id.clone()).await {
         Ok(user) => Ok(user),
-        Err(e) => match e.kind() {
-            ErrorKind::NotFound => Err(HttpResponse::NotFound().json(error_construct(
-                String::from("user"),
-                String::from("not found"),
-                e.to_string(),
-                Some(user_id),
-                None,
-                None,
-            ))),
-            ErrorKind::ConnectionAborted => {
-                Err(HttpResponse::ServiceUnavailable().json(error_construct(
-                    String::from("database"),
-                    String::from("service unavailable"),
-                    e.to_string(),
-                    None,
-                    None,
-                    None,
-                )))
-            }
-            _ => Err(HttpResponse::InternalServerError().json(error_construct(
-                String::from("database"),
-                String::from("internal server error"),
-                e.to_string(),
-                None,
-                None,
-                None,
-            ))),
-        },
+        Err(e) => Err(e),
     }
 }
 
@@ -352,33 +122,40 @@ pub async fn list_users_service(
 ) -> Result<Vec<DetailUserDTO>, HttpResponse> {
     match list_users_repository(pg_pool, query_params).await {
         Ok(user) => Ok(user),
-        Err(e) => match e.kind() {
-            ErrorKind::NotFound => Err(HttpResponse::NotFound().json(error_construct(
-                String::from("users"),
-                String::from("not found"),
-                e.to_string(),
-                None,
-                None,
-                None,
-            ))),
-            ErrorKind::ConnectionAborted => {
-                Err(HttpResponse::ServiceUnavailable().json(error_construct(
-                    String::from("database"),
-                    String::from("service unavailable"),
-                    e.to_string(),
-                    None,
-                    None,
-                    None,
-                )))
-            }
-            _ => Err(HttpResponse::InternalServerError().json(error_construct(
-                String::from("database"),
-                String::from("internal server error"),
-                e.to_string(),
-                None,
-                None,
-                None,
-            ))),
-        },
+        Err(e) => Err(e),
     }
+}
+
+pub struct DeleteUserServiceResponse {
+    pub email: String,
+}
+
+pub async fn delete_user_service(
+    pg_pool: Data<deadpool_postgres::Pool>,
+    user_password: String,
+    user_id: String,
+) -> Result<DeleteUserServiceResponse, HttpResponse> {
+    let user = match detail_user_repository(pg_pool.clone(), user_id.clone()).await {
+        Ok(user) => user,
+        Err(e) => return Err(e),
+    };
+    let user_salt = match get_user_salt_repository(user_id.clone(), pg_pool.clone()).await {
+        Ok(user_salt) => user_salt,
+        Err(e) => return Err(e),
+    };
+    let hash = match StripSuffix::strip_suffix(user.password, &user_salt) {
+        Ok(hash) => hash,
+        Err(e) => return Err(e),
+    };
+    return match Bcrypt::verify(
+        user_password.clone(),
+        hash.as_str(),
+        BcryptVerifyData::Password(user_password),
+    ) {
+        Ok(_) => match delete_user_repository(pg_pool, user_id).await {
+            Ok(_) => Ok(DeleteUserServiceResponse { email: user.email }),
+            Err(e) => Err(e),
+        },
+        Err(e) => Err(e),
+    };
 }
