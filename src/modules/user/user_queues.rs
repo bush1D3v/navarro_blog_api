@@ -83,15 +83,12 @@ pub async fn user_flush_queue(pool_async: Pool, queue_async: Arc<CreateUserAppQu
         match insert_user_queue(pool_async.clone(), queue).await {
             Ok(_) => (),
             Err(e) => {
-                let status = e.status();
-                let kind: ErrorKind;
-                if status == 503 {
-                    kind = ErrorKind::ConnectionAborted;
-                } else {
-                    kind = ErrorKind::Other;
-                }
                 let message = e.error().unwrap().to_string();
-                std::io::Error::new(kind, message);
+                if e.status() == 503 {
+                    std::io::Error::new(ErrorKind::ConnectionAborted, message);
+                } else {
+                    std::io::Error::new(ErrorKind::Other, message);
+                }
             }
         }
     }
