@@ -15,13 +15,13 @@ impl RedisModels {
                 env::var("REDIS_PORT").unwrap().parse().unwrap(),
             ),
             redis: RedisConnectionInfo {
-                db: 0,
-                username: None,
-                password: None,
+                db: env::var("REDIS_NUMBER").unwrap().parse().unwrap(),
+                username: Some(env::var("REDIS_USER").unwrap()),
+                password: Some(env::var("REDIS_PASSWORD").unwrap()),
             },
         });
         cfg.pool = Some(PoolConfig {
-            max_size: 9995,
+            max_size: env::var("REDIS_POOL_SIZE").unwrap().parse().unwrap(),
             timeouts: Timeouts {
                 wait: Some(Duration::from_secs(60)),
                 create: Some(Duration::from_secs(60)),
@@ -40,13 +40,13 @@ impl RedisModels {
                 env::var("1.1.1.1").unwrap().parse().unwrap(),
             ),
             redis: RedisConnectionInfo {
-                db: 0,
-                username: None,
-                password: None,
+                db: env::var("REDIS_NUMBER").unwrap().parse().unwrap(),
+                username: Some(env::var("REDIS_USER").unwrap()),
+                password: Some(env::var("REDIS_PASSWORD").unwrap()),
             },
         });
         cfg.pool = Some(PoolConfig {
-            max_size: 9995,
+            max_size: env::var("REDIS_POOL_SIZE").unwrap().parse().unwrap(),
             timeouts: Timeouts {
                 wait: Some(Duration::from_secs(60)),
                 create: Some(Duration::from_secs(60)),
