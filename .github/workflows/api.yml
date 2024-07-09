@@ -11,16 +11,19 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  DB_HOST: ${{vars.DB_HOST}}
-  DB_PORT: ${{vars.DB_PORT}}
-  DB_NAME: ${{vars.DB_NAME}}
-  DB_USER: ${{vars.DB_USER}}
+  DB_HOST: ${{secrets.DB_HOST}}
+  DB_PORT: ${{secrets.DB_PORT}}
+  DB_NAME: ${{secrets.DB_NAME}}
+  DB_USER: ${{secrets.DB_USER}}
   DB_PASSWORD: ${{secrets.DB_PASSWORD}}
-  REDIS_HOST: ${{vars.REDIS_HOST}}
-  REDIS_PORT: ${{vars.REDIS_PORT}}
-  POOL_SIZE: ${{vars.POOL_SIZE}}
+  REDIS_HOST: ${{secrets.REDIS_HOST}}
+  REDIS_PORT: ${{secrets.REDIS_PORT}}
+  DB_POOL_SIZE: ${{secrets.DB_POOL_SIZE}}
   JWT_REFRESH_KEY: ${{secrets.JWT_REFRESH_KEY}}
   JWT_ACCESS_KEY: ${{secrets.JWT_ACCESS_KEY}}
+  REDIS_NUMBER: ${{secrets.REDIS_NUMBER}}
+  REDIS_PASSWORD: ${{secrets.REDIS_PASSWORD}}
+  REDIS_USER: ${{secrets.REDIS_USER}}
 
 jobs:
   build:
@@ -45,6 +48,10 @@ jobs:
         image: redis
         ports:
           - 6379:6379
+        env:
+          REDIS_NUMBER: ${{ env.REDIS_NUMBER }}
+          REDIS_PASSWORD: ${{env.REDIS_PASSWORD}}
+          REDIS_USER: ${{env.REDIS_USER}}
         options: --entrypoint redis-server
 
     steps:
@@ -62,7 +69,7 @@ jobs:
 
     - name: Run migrations
       run: |
-        export DATABASE_URL=postgres://${{ env.DB_USER }}:${{ secrets.DB_PASSWORD }}@${{ env.DB_HOST }}:${{ env.DB_PORT }}/${{ env.DB_NAME }}
+        export DATABASE_URL=postgres://${{ env.DB_USER }}:${{ env.DB_PASSWORD }}@${{ env.DB_HOST }}:${{ env.DB_PORT }}/${{ env.DB_NAME }}
         diesel migration run
 
     - name: Build
