@@ -8,7 +8,7 @@ use crate::shared::{
     structs::query_params::QueryParams,
     treaties::{
         bcrypt_treated::{Bcrypt, BcryptVerifyData},
-        jwt_treated::JWT,
+        jwt_treated::Jwt,
         strip_suffix_treated::StripSuffix,
     },
 };
@@ -83,11 +83,11 @@ pub async fn login_user_service(
                 BcryptVerifyData::EmailPassword(body.email.clone(), body.password.clone()),
             ) {
                 Ok(_) => {
-                    let refresh_token = match JWT::refresh_token_constructor(user.id.clone()) {
+                    let refresh_token = match Jwt::refresh_token_constructor(user.id.clone()) {
                         Ok(refresh_token) => refresh_token,
                         Err(e) => return Err(e),
                     };
-                    let access_token = match JWT::access_token_constructor(user.id.clone()) {
+                    let access_token = match Jwt::access_token_constructor(user.id.clone()) {
                         Ok(access_token) => access_token,
                         Err(e) => return Err(e),
                     };

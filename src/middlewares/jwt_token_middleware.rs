@@ -1,4 +1,4 @@
-use crate::{shared::treaties::jwt_treated::JWT, utils::error_construct::error_construct};
+use crate::{shared::treaties::jwt_treated::Jwt, utils::error_construct::error_construct};
 use actix_web::{http::header::HeaderMap, HttpResponse};
 
 pub fn jwt_token_middleware(headers: &HeaderMap) -> Result<(), HttpResponse> {
@@ -31,7 +31,7 @@ pub fn jwt_token_middleware(headers: &HeaderMap) -> Result<(), HttpResponse> {
         }
     };
 
-    match JWT::access_token_decode(token) {
+    match Jwt::access_token_decode(token) {
         Ok(_) => Ok(()),
         Err(e) => Err(e),
     }
