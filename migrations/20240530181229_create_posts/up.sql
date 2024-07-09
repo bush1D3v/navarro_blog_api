@@ -4,6 +4,6 @@ CREATE TABLE posts (
     subtitle   VARCHAR(255) NOT NULL,
     body       TEXT         NOT NULL,
     created_at TIMESTAMPTZ  NOT NULL,
-    updated_at TIMESTAMPTZ  NOT NULL,
+    updated_at TIMESTAMPTZ  DEFAULT     NULL,
     likes      INT          DEFAULT     0
 );

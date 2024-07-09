@@ -6,8 +6,8 @@ CREATE TABLE comments (
     body               TEXT         NOT NULL,
     likes              INT          DEFAULT     0,
     created_at         TIMESTAMPTZ  NOT NULL,
-    updated_at         TIMESTAMPTZ  NOT NULL,
-    FOREIGN KEY (post_id)           REFERENCES posts (id),
-    FOREIGN KEY (user_id)           REFERENCES users (id),
-    FOREIGN KEY (parent_comment_id) REFERENCES comments (id)
+    updated_at         TIMESTAMPTZ  DEFAULT     NULL,
+    FOREIGN KEY (post_id)           REFERENCES  posts (id),
+    FOREIGN KEY (user_id)           REFERENCES  users (id),
+    FOREIGN KEY (parent_comment_id) REFERENCES  comments (id)
 );
