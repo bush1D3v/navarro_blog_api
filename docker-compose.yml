@@ -43,5 +43,7 @@ services:
   redis:
     image: redis
     hostname: redis
+    env_file:
+      - .env
     network_mode: bridge
     command: redis-server --save "" --appendonly no --maxclients 20000
