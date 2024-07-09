@@ -1,6 +1,15 @@
-use super::{enums::db_table::TablesEnum, models::user::UserModels};
+use super::{
+    enums::db_table::TablesEnum,
+    models::{postgres::PostgresModels, redis::RedisModels, user::UserModels},
+};
 use navarro_blog_api::modules::user::user_dtos::UserDTO;
 use sql_builder::{quote, SqlBuilder};
+
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct SaltDTO {
+    pub salt: String,
+    pub user_id: String,
+}
 
 pub struct FunctionalTester {
     db_table: String,
@@ -32,24 +41,13 @@ impl FunctionalTester {
         }
     }
 
-    pub async fn delete_from_database(
-        pg_pool: deadpool_postgres::Pool,
-        redis_pool: deadpool_redis::Pool,
-        db_table: TablesEnum,
-        conditions: Option<Vec<(&str, &str)>>,
-    ) {
-        let client = pg_pool.get().await.unwrap();
+    pub async fn delete_from_database(db_table: TablesEnum, conditions: Option<Vec<(&str, &str)>>) {
+        let client = PostgresModels::postgres_success().get().await.unwrap();
         let mut sql = SqlBuilder::delete_from(FunctionalTester::construct_table(db_table).db_table);
 
         if let Some(conditions) = conditions {
             for (key, value) in conditions {
-                if key.contains("id") {
-                    sql.field(&key);
-                    sql.values(&[&quote(uuid::Uuid::parse_str(value).unwrap())]);
-                } else {
-                    sql.field(&key);
-                    sql.values(&[&quote(value)]);
-                }
+                sql.or_where_eq(key, &quote(&value));
             }
         }
 
@@ -58,7 +56,7 @@ impl FunctionalTester {
         client.prepare(&stmt).await.unwrap();
         client.execute(&stmt, &[]).await.unwrap();
 
-        let mut redis_conn: deadpool_redis::Connection = redis_pool.get().await.unwrap();
+        let mut redis_conn = RedisModels::pool_success().await.get().await.unwrap();
         let _: () = deadpool_redis::redis::cmd("FLUSHDB")
             .query_async(&mut redis_conn)
             .await
@@ -66,73 +64,57 @@ impl FunctionalTester {
     }
 
     pub async fn can_see_in_database(
-        pg_pool: deadpool_postgres::Pool,
         db_table: TablesEnum,
+        field: &str,
         conditions: Option<Vec<(&str, &str)>>,
     ) -> bool {
-        let client = pg_pool.get().await.unwrap();
+        let mut conn = PostgresModels::postgres_success().get().await.unwrap();
+        let transaction = conn.transaction().await.unwrap();
 
-        let mut sql = SqlBuilder::select_from(FunctionalTester::construct_table(db_table).db_table);
+        let mut sql_builder =
+            SqlBuilder::select_from(FunctionalTester::construct_table(db_table).db_table);
+        sql_builder.field(field);
 
         if let Some(conditions) = conditions {
             for (key, value) in conditions {
-                if key.contains("id") {
-                    sql.and_where(format!(
-                        "\"{}\" = {}",
-                        key,
-                        uuid::Uuid::parse_str(value).unwrap()
-                    ));
-                } else {
-                    sql.and_where(format!("\"{}\" = '{}'", key, value));
-                }
+                sql_builder.or_where_eq(key, &quote(&value));
             }
         }
 
-        let stmt = sql.sql().unwrap();
-
-        let stmt = client.prepare(&stmt).await.unwrap();
-        let rows = client.query(&stmt, &[]).await.unwrap();
+        let sql = sql_builder.sql().unwrap();
+        let rows = transaction.query(sql.as_str(), &[]).await.unwrap();
+        transaction.commit().await.unwrap();
 
         !rows.is_empty()
     }
 
     pub async fn cant_see_in_database(
-        pg_pool: deadpool_postgres::Pool,
         db_table: TablesEnum,
+        field: &str,
         conditions: Option<Vec<(&str, &str)>>,
     ) -> bool {
-        let client = pg_pool.get().await.unwrap();
+        let mut conn = PostgresModels::postgres_success().get().await.unwrap();
+        let transaction = conn.transaction().await.unwrap();
 
-        let mut sql = SqlBuilder::select_from(FunctionalTester::construct_table(db_table).db_table);
+        let mut sql_builder =
+            SqlBuilder::select_from(FunctionalTester::construct_table(db_table).db_table);
+        sql_builder.field(field);
 
         if let Some(conditions) = conditions {
             for (key, value) in conditions {
-                if key.contains("id") {
-                    sql.and_where(format!(
-                        "\"{}\" = {}",
-                        key,
-                        uuid::Uuid::parse_str(value).unwrap()
-                    ));
-                } else {
-                    sql.and_where(format!("\"{}\" = '{}'", key, value));
-                }
+                sql_builder.or_where_eq(key, &quote(&value));
             }
         }
 
-        let stmt = sql.sql().unwrap();
-
-        let stmt = client.prepare(&stmt).await.unwrap();
-        let rows = client.query(&stmt, &[]).await.unwrap();
+        let sql = sql_builder.sql().unwrap();
+        let rows = transaction.query(sql.as_str(), &[]).await.unwrap();
+        transaction.commit().await.unwrap();
 
         rows.is_empty()
     }
 
-    pub async fn insert_in_db_salt(
-        pg_pool: deadpool_postgres::Pool,
-        user_id: String,
-        salt: String,
-    ) -> String {
-        let client = pg_pool.get().await.unwrap();
+    pub async fn insert_in_db_salt(user_id: String, salt: String) -> String {
+        let client = PostgresModels::postgres_success().get().await.unwrap();
 
         let user_id2 = uuid::Uuid::parse_str(&user_id).unwrap();
         let salt2 = uuid::Uuid::parse_str(&salt).unwrap();
@@ -152,17 +134,32 @@ impl FunctionalTester {
         salt
     }
 
-    pub async fn get_salt_from_db(pg_pool: deadpool_postgres::Pool) -> String {
-        let client = pg_pool.get().await.unwrap();
-        let stmt = client.prepare("SELECT salt FROM salt").await.unwrap();
-        let rows = client.query(&stmt, &[]).await.unwrap();
-        rows[0].get("salt")
+    pub async fn get_salt_from_db(conditions: Option<Vec<(&str, &str)>>) -> SaltDTO {
+        let mut conn = PostgresModels::postgres_success().get().await.unwrap();
+        let transaction = conn.transaction().await.unwrap();
+
+        let mut sql_builder = SqlBuilder::select_from("salt");
+
+        if let Some(conditions) = conditions {
+            for (key, value) in conditions {
+                sql_builder.or_where_eq(key, &quote(&value));
+            }
+        }
+
+        let sql = sql_builder.sql().unwrap();
+        let rows = transaction.query(sql.as_str(), &[]).await.unwrap();
+        transaction.commit().await.unwrap();
+
+        let salt: uuid::Uuid = rows[0].get("salt");
+        let user_id: uuid::Uuid = rows[0].get("user_id");
+
+        SaltDTO {
+            salt: salt.to_string(),
+            user_id: user_id.to_string(),
+        }
     }
 
-    pub async fn insert_in_db_users(
-        pg_pool: deadpool_postgres::Pool,
-        user_body: UserDTO,
-    ) -> UserDTO {
+    pub async fn insert_in_db_users(user_body: UserDTO) -> UserDTO {
         let mut pg_user = UserDTO {
             id: user_body.id.clone(),
             name: user_body.name.clone(),
@@ -172,22 +169,22 @@ impl FunctionalTester {
         };
 
         if user_body.id == *"" {
-            pg_user.id = UserModels::complete_user_model().id;
+            pg_user.id = UserModels::complete_user_model_hashed().id;
         }
         if user_body.name == *"" {
-            pg_user.name = UserModels::complete_user_model().name;
+            pg_user.name = UserModels::complete_user_model_hashed().name;
         }
         if user_body.email == *"" {
-            pg_user.email = UserModels::complete_user_model().email;
+            pg_user.email = UserModels::complete_user_model_hashed().email;
         }
         if user_body.password == *"" {
-            pg_user.password = UserModels::complete_user_model().password;
+            pg_user.password = UserModels::complete_user_model_hashed().password;
         }
         if user_body.created_at == *"" {
-            pg_user.created_at = UserModels::complete_user_model().created_at;
+            pg_user.created_at = UserModels::complete_user_model_hashed().created_at;
         }
 
-        let client = pg_pool.get().await.unwrap();
+        let client = PostgresModels::postgres_success().get().await.unwrap();
 
         let stmt = client
             .prepare(
@@ -216,5 +213,12 @@ impl FunctionalTester {
             .unwrap();
 
         pg_user
+    }
+
+    pub async fn get_user_from_db() -> String {
+        let client = PostgresModels::postgres_success().get().await.unwrap();
+        let stmt = client.prepare("SELECT salt FROM salt").await.unwrap();
+        let rows = client.query(&stmt, &[]).await.unwrap();
+        rows[0].get("salt")
     }
 }
