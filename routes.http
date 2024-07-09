@@ -10,6 +10,12 @@ GET  BASE_URL:HTTP_PORT/api-docs/openapi.json
 
 ## User
 
+### User Options
+
+OPTIONS BASE_URL:HTTP_PORT/user
+Content-Type: application/json
+Authorization: Bearer Token
+
 ### Create user
 
 POST BASE_URL:HTTP_PORT/user
@@ -50,7 +56,8 @@ Content-Type: application/json
 Authorization: Bearer Token
 
 {
-  "email": "bush1d3v2@gmail.com"
+  "email": "bush1d3v2@gmail.com",
+  "password": "12345678%"
 }
 
 ### Delete user
