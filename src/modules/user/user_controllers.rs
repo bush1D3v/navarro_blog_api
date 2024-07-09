@@ -1,19 +1,19 @@
 use super::{
-    user_dtos::{CreateUserDTO, DetailUserDTO, LoginUserDTO},
+    user_dtos::{CreateUserDTO, DeleteUserDTO, DetailUserDTO, LoginUserDTO},
     user_queues::CreateUserAppQueue,
     user_serdes::UserSerdes,
-    user_services::{detail_user_service, insert_user_service, list_users_service},
+    user_services::*,
 };
 use crate::{
     infra::redis::Redis,
     middlewares::{
         jwt_token_middleware::jwt_token_middleware, uuid_path_middleware::uuid_path_middleware,
     },
-    modules::user::user_services::login_user_service,
+    modules::user::user_services::{delete_user_service, login_user_service},
     shared::structs::query_params::QueryParams,
     utils::error_construct::error_construct,
 };
-use actix_web::{get, options, post, web, HttpRequest, HttpResponse, Responder};
+use actix_web::{delete, get, options, post, web, HttpRequest, HttpResponse, Responder};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use utoipa::ToSchema;
@@ -21,11 +21,12 @@ use validator::Validate;
 
 pub fn user_controllers_module() -> actix_web::Scope {
     web::scope("/user")
+        .service(user_options)
         .service(insert_user)
         .service(login_user)
         .service(list_users)
         .service(detail_user)
-        .service(user_options)
+        .service(delete_user)
 }
 
 #[utoipa::path(
@@ -98,32 +99,29 @@ async fn insert_user(
     pg_pool: web::Data<deadpool_postgres::Pool>,
 ) -> impl Responder {
     match body.validate() {
-        Ok(_) => {
-            match Redis::get_redis(&redis_pool, format!("a/{}", body.email.clone()).as_str()).await
-            {
-                Ok(_) => HttpResponse::Conflict().json(error_construct(
-                    String::from("email"),
-                    String::from("conflict"),
-                    String::from("Este e-mail já está sendo utilizado por outro usuário."),
-                    Some(body.email.clone()),
-                    None,
-                    None,
-                )),
-                Err(_) => match insert_user_service(queue.clone(), pg_pool, body).await {
-                    Ok(resp) => match UserSerdes::serde_json_to_string(&resp.user) {
-                        Ok(string_user) => {
-                            let _ =
-                                Redis::set_redis(&redis_pool, &resp.user_id, &string_user).await;
-                            HttpResponse::Created()
-                                .append_header(("Location", format!("/user/{}", resp.user_id)))
-                                .finish()
-                        }
-                        Err(e) => e,
-                    },
+        Ok(_) => match Redis::get(&redis_pool, body.email.clone().as_str()).await {
+            Ok(_) => HttpResponse::Conflict().json(error_construct(
+                String::from("email"),
+                String::from("conflict"),
+                String::from("Este e-mail já está sendo utilizado por outro usuário."),
+                Some(body.email.clone()),
+                None,
+                None,
+            )),
+            Err(_) => match insert_user_service(queue.clone(), pg_pool, body).await {
+                Ok(resp) => match UserSerdes::serde_json_to_string(&resp) {
+                    Ok(string_user) => {
+                        let _ = Redis::set(&redis_pool, &resp.id, &string_user).await;
+                        let _ = Redis::set(&redis_pool, &resp.email, &string_user).await;
+                        HttpResponse::Created()
+                            .append_header(("Location", format!("/user/{}", resp.id)))
+                            .finish()
+                    }
                     Err(e) => e,
                 },
-            }
-        }
+                Err(e) => e,
+            },
+        },
         Err(e) => HttpResponse::BadRequest().json(e),
     }
 }
@@ -222,38 +220,42 @@ async fn login_user(
     redis_pool: web::Data<deadpool_redis::Pool>,
 ) -> impl Responder {
     match body.validate() {
-        Ok(_) => {
-            match Redis::get_redis(&redis_pool, format!("a/{}", body.email.clone()).as_str()).await
-            {
-                Ok(redis_user) => match UserSerdes::serde_string_to_json(&redis_user) {
-                    Ok(user) => {
-                        let user = LoginUserDTO {
-                            email: user.email,
-                            password: user.password,
-                        };
-                        match login_user_service(web::Json(user), pg_pool, true).await {
-                            Ok(tokens) => HttpResponse::Ok().json(LoginUserControllerResponse {
-                                access_token: tokens.access_token,
-                                access_expires_in: tokens.access_expires_in,
-                                refresh_token: tokens.refresh_token,
-                                refresh_expires_in: tokens.refresh_expires_in,
-                            }),
-                            Err(e) => e,
-                        }
+        Ok(_) => match Redis::get(&redis_pool, body.email.as_str()).await {
+            Ok(redis_user) => match UserSerdes::serde_string_to_json(&redis_user) {
+                Ok(user) => {
+                    let user = LoginUserDTO {
+                        email: user.email,
+                        password: body.password.clone(),
+                    };
+                    match login_user_service(web::Json(user), pg_pool, true).await {
+                        Ok(service_resp) => HttpResponse::Ok().json(LoginUserControllerResponse {
+                            access_token: service_resp.access_token,
+                            access_expires_in: service_resp.access_expires_in,
+                            refresh_token: service_resp.refresh_token,
+                            refresh_expires_in: service_resp.refresh_expires_in,
+                        }),
+                        Err(e) => e,
+                    }
+                }
+                Err(e) => e,
+            },
+            Err(_) => match login_user_service(web::Json(body.clone()), pg_pool, false).await {
+                Ok(service_resp) => match UserSerdes::serde_json_to_string(&service_resp.user) {
+                    Ok(string_user) => {
+                        let _ = Redis::set(&redis_pool, &service_resp.user.id, &string_user).await;
+                        let _ = Redis::set(&redis_pool, &body.email, &string_user).await;
+                        HttpResponse::Ok().json(LoginUserControllerResponse {
+                            access_token: service_resp.access_token,
+                            access_expires_in: service_resp.access_expires_in,
+                            refresh_token: service_resp.refresh_token,
+                            refresh_expires_in: service_resp.refresh_expires_in,
+                        })
                     }
                     Err(e) => e,
                 },
-                Err(_) => match login_user_service(body, pg_pool, false).await {
-                    Ok(tokens) => HttpResponse::Ok().json(LoginUserControllerResponse {
-                        access_token: tokens.access_token,
-                        access_expires_in: tokens.access_expires_in,
-                        refresh_token: tokens.refresh_token,
-                        refresh_expires_in: tokens.refresh_expires_in,
-                    }),
-                    Err(e) => e,
-                },
-            }
-        }
+                Err(e) => e,
+            },
+        },
         Err(e) => HttpResponse::BadRequest().json(e),
     }
 }
@@ -464,7 +466,7 @@ async fn detail_user(
         Ok(user_id) => user_id,
         Err(e) => return e,
     };
-    match Redis::get_redis(&redis_pool, &user_id).await {
+    match Redis::get(&redis_pool, &user_id).await {
         Ok(redis_user) => match UserSerdes::serde_string_to_json(&redis_user) {
             Ok(user) => {
                 let user = DetailUserDTO {
@@ -480,7 +482,8 @@ async fn detail_user(
         Err(_) => match detail_user_service(pg_pool, user_id.clone()).await {
             Ok(pg_user) => match UserSerdes::serde_json_to_string(&pg_user) {
                 Ok(redis_user) => {
-                    let _ = Redis::set_redis(&redis_pool, &user_id, &redis_user).await;
+                    let _ = Redis::set(&redis_pool, &user_id, &redis_user).await;
+                    let _ = Redis::set(&redis_pool, &pg_user.email, &redis_user).await;
                     let user = DetailUserDTO {
                         id: pg_user.id,
                         name: pg_user.name,
@@ -498,20 +501,128 @@ async fn detail_user(
 
 #[utoipa::path(
     tag = "user",
-    path = "/user",
+    path = "/user/{user_id}",
+    security(("bearer_auth" = [])),
     responses((
-        status = 200, content_type = "application/json", headers((
+        status = 200, description = "Exclusão de usuário com sucesso (OK)", content_type = "application/json"
+    ), (
+		status = 400, description = "Erro do usuário por id inválido e/ou falta de preenchimento (Bad Request)",
+		body = ErrorStruct, content_type = "application/json", example = json ! ({
+            "user_id": [{
+                "code": "bad request",
+                "message": "Por favor, envie um valor de UUID válido na URL da requisição.",
+                "params": {
+                    "min": null,
+                    "value": null,
+                    "max": null
+                }
+		    }]
+        })
+	), (
+		status = 401, description = "Credenciais de autenticação inválidas (Unauthorized)",
+		body = ErrorStruct, content_type = "application/json", example = json ! ({
+            "bearer token": [{
+                "code": "unauthorized",
+                "message": "Acesso negado por token de autorização.",
+                "params": {
+                    "min": null,
+                    "value": null,
+                    "max": null
+                }
+		    }]
+        })
+	) , (
+		status = 404, description = "Usuário não encontrado (Not Found)", body = ErrorStruct,
+		content_type = "application/json", example = json ! ({
+            "id": [{
+                "code": "not found",
+                "message": "Não foi encontrado um usuário com este id.",
+                "params": {
+                    "min": null,
+                    "value": "06buff3f-637d-4c15-a02c-c8247ffb9400",
+                    "max": null
+                }
+		    }]
+        })
+	), (
+		status = 500, description = "Erro Interno do Servidor (Internal Server Error)", body = ErrorStruct,
+		content_type = "application/json", example = json ! ({
+            "jsonwebtoken": [{
+                "code": "internal server error",
+                "message": "failed to decode token",
+                "params": {
+                    "min": null,
+                    "value": null,
+                    "max": null,
+                }
+		    }]
+        })
+	), (
+		status = 503, description = "Serviço Indisponível (Service Unavailable)", body = ErrorStruct,
+		content_type = "application/json", example = json ! ({
+            "database": [{
+                "code": "service unavailable",
+                "message": "Error occurred while creating a new object: db error: FATAL: password authentication failed for user \"postgres\"",
+                "params": {
+                    "min": null,
+                    "value": null,
+                    "max": null,
+                }
+		    }]
+        })
+	))
+)]
+#[delete("{user_id}")]
+async fn delete_user(
+    pg_pool: web::Data<deadpool_postgres::Pool>,
+    redis_pool: web::Data<deadpool_redis::Pool>,
+    body: web::Json<DeleteUserDTO>,
+    user_id: web::Path<String>,
+    req: HttpRequest,
+) -> impl Responder {
+    match body.validate() {
+        Ok(_) => {
+            match jwt_token_middleware(req.headers()) {
+                Ok(_) => (),
+                Err(e) => return e,
+            };
+            let user_id = match uuid_path_middleware(user_id, "user_id") {
+                Ok(user_id) => user_id,
+                Err(e) => return e,
+            };
+            match delete_user_service(pg_pool, body.password.clone(), user_id.clone()).await {
+                Ok(resp) => {
+                    let _ = Redis::delete(&redis_pool, user_id.as_str()).await;
+                    let _ = Redis::delete(&redis_pool, resp.email.as_str()).await;
+                    HttpResponse::Ok().finish()
+                }
+                Err(e) => e,
+            }
+        }
+        Err(e) => HttpResponse::BadRequest().json(e),
+    }
+}
+
+#[utoipa::path(
+    tag = "user",
+    path = "/user",
+    security(("bearer_auth" = [])),
+    responses((
+        status = 200, headers((
             "access-control-allow-methods" = Vec<String>, description = "Métodos HTTP suportados pela entidade"
         )),
         description = "Retorna quais métodos HTTP são suportados nas rotas da entidade (OK)",
     ))
 )]
 #[options("")]
-async fn user_options() -> impl Responder {
-    HttpResponse::Ok()
-        .append_header((
-            "Access-Control-Allow-Methods",
-            "GET, POST, PATCH, PUT, DELETE, OPTIONS",
-        ))
-        .finish()
+async fn user_options(req: HttpRequest) -> impl Responder {
+    match jwt_token_middleware(req.headers()) {
+        Ok(_) => HttpResponse::Ok()
+            .append_header((
+                "Access-Control-Allow-Methods",
+                "GET, POST, PATCH, PUT, DELETE, OPTIONS",
+            ))
+            .finish(),
+        Err(e) => e,
+    }
 }
