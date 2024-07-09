@@ -1,76 +1,45 @@
-use crate::shared::{
-    exceptions::custom_error_to_io_error_kind::{custom_error_to_io_error_kind, CustomError},
-    structs::query_params::QueryParams,
-};
-
 use super::{
     user_dtos::{CreateUserDTO, DetailUserDTO, UserDTO},
     user_queues::CreateUserAppQueue,
 };
-use actix_web::web::{Data, Json, Query};
-use serde::Serialize;
+use crate::{
+    shared::{
+        exceptions::custom_error_to_io_error_kind::{custom_error_to_io_error_kind, CustomError},
+        structs::query_params::QueryParams,
+    },
+    utils::{
+        error_construct::error_construct, query_constructor_executor::query_constructor_executor,
+    },
+};
+use actix_web::{
+    web::{Data, Json, Query},
+    HttpResponse,
+};
 use sql_builder::quote;
-use std::{io::ErrorKind, sync::Arc};
+use std::sync::Arc;
 
 pub async fn get_user_salt_repository(
     user_id: String,
-    pool: Data<deadpool_postgres::Pool>,
-) -> Result<String, std::io::Error> {
+    pg_pool: Data<deadpool_postgres::Pool>,
+) -> Result<String, HttpResponse> {
     let mut sql_builder = sql_builder::SqlBuilder::select_from("salt");
     sql_builder.field("salt");
     sql_builder.or_where_eq("user_id", &quote(&user_id));
 
-    let mut conn = match pool.get().await {
+    let rows = match query_constructor_executor(pg_pool, sql_builder).await {
         Ok(x) => x,
-        Err(e) => {
-            return Err(std::io::Error::new(
-                custom_error_to_io_error_kind(CustomError::PoolError),
-                e,
-            ))
-        }
-    };
-    let transaction = match conn.transaction().await {
-        Ok(x) => x,
-        Err(e) => {
-            return Err(std::io::Error::new(
-                custom_error_to_io_error_kind(CustomError::TokioPostgres),
-                e,
-            ))
-        }
-    };
-    let sql = match sql_builder.sql() {
-        Ok(x) => x,
-        Err(e) => {
-            return Err(std::io::Error::new(
-                custom_error_to_io_error_kind(CustomError::AnyhowError),
-                e,
-            ))
-        }
-    };
-    let rows = match transaction.query(sql.as_str(), &[]).await {
-        Ok(x) => x,
-        Err(e) => {
-            return Err(std::io::Error::new(
-                custom_error_to_io_error_kind(CustomError::TokioPostgres),
-                e,
-            ))
-        }
-    };
-    match transaction.commit().await {
-        Ok(_) => (),
-        Err(e) => {
-            return Err(std::io::Error::new(
-                custom_error_to_io_error_kind(CustomError::TokioPostgres),
-                e,
-            ))
-        }
+        Err(e) => return Err(e),
     };
 
     if rows.is_empty() {
-        return Err(std::io::Error::new(
-            custom_error_to_io_error_kind(CustomError::AnyhowError),
-            "Erro inesperado do servidor, tente novamente mais tarde.",
-        ));
+        return Err(HttpResponse::InternalServerError().json(error_construct(
+            String::from("server"),
+            String::from("internal server error"),
+            String::from("Erro inesperado no servidor. Tente novamente mais tarde."),
+            None,
+            None,
+            None,
+        )));
     }
     let salt: uuid::Uuid = rows[0].get("salt");
     Ok(salt.to_string())
@@ -82,7 +51,7 @@ pub async fn insert_user_repository(
     body: Json<CreateUserDTO>,
     user_id: String,
     user_salt: String,
-) -> Result<UserDTO, std::io::Error> {
+) -> Result<UserDTO, HttpResponse> {
     let name = body.name.clone();
     let email = body.email.clone();
     let password = body.password.clone();
@@ -104,75 +73,36 @@ pub async fn insert_user_repository(
     Ok(dto)
 }
 
-#[derive(Serialize)]
-pub struct LoginUserRepositoryResponse {
-    pub id: String,
-    pub password: String,
-}
-
 pub async fn login_user_repository(
     email: String,
-    pool: Data<deadpool_postgres::Pool>,
-) -> Result<LoginUserRepositoryResponse, std::io::Error> {
+    pg_pool: Data<deadpool_postgres::Pool>,
+) -> Result<UserDTO, HttpResponse> {
     let mut sql_builder = sql_builder::SqlBuilder::select_from("users");
-    sql_builder.field("id").field("password");
     sql_builder.or_where_eq("email", &quote(&email));
 
-    let mut conn = match pool.get().await {
+    let rows = match query_constructor_executor(pg_pool, sql_builder).await {
         Ok(x) => x,
-        Err(e) => {
-            return Err(std::io::Error::new(
-                custom_error_to_io_error_kind(CustomError::PoolError),
-                e,
-            ))
-        }
-    };
-    let transaction = match conn.transaction().await {
-        Ok(x) => x,
-        Err(e) => {
-            return Err(std::io::Error::new(
-                custom_error_to_io_error_kind(CustomError::TokioPostgres),
-                e,
-            ))
-        }
-    };
-    let sql = match sql_builder.sql() {
-        Ok(x) => x,
-        Err(e) => {
-            return Err(std::io::Error::new(
-                custom_error_to_io_error_kind(CustomError::AnyhowError),
-                e,
-            ))
-        }
-    };
-    let rows = match transaction.query(sql.as_str(), &[]).await {
-        Ok(x) => x,
-        Err(e) => {
-            return Err(std::io::Error::new(
-                custom_error_to_io_error_kind(CustomError::TokioPostgres),
-                e,
-            ))
-        }
-    };
-    match transaction.commit().await {
-        Ok(_) => (),
-        Err(e) => {
-            return Err(std::io::Error::new(
-                custom_error_to_io_error_kind(CustomError::TokioPostgres),
-                e,
-            ))
-        }
+        Err(e) => return Err(e),
     };
 
     if rows.is_empty() {
-        return Err(std::io::Error::new(
-            ErrorKind::NotFound,
-            "Não foi encontrado um usuário com este e-mail.",
-        ));
+        return Err(HttpResponse::NotFound().json(error_construct(
+            String::from("user"),
+            String::from("not found"),
+            String::from("Não foi encontrado um usuário com este e-mail."),
+            Some(email),
+            None,
+            None,
+        )));
     }
-    let id: uuid::Uuid = rows[0].get("id");
-    Ok(LoginUserRepositoryResponse {
-        id: id.to_string(),
+
+    let user_id: uuid::Uuid = rows[0].get("id");
+    let created_at: chrono::DateTime<chrono::Utc> = rows[0].get("created_at");
+    Ok(UserDTO {
+        id: user_id.to_string(),
+        name: rows[0].get("name"),
+        email: rows[0].get("email"),
+        created_at: created_at.to_string(),
         password: rows[0].get("password"),
     })
 }
@@ -180,61 +110,24 @@ pub async fn login_user_repository(
 pub async fn detail_user_repository(
     pg_pool: Data<deadpool_postgres::Pool>,
     user_id: String,
-) -> Result<UserDTO, std::io::Error> {
+) -> Result<UserDTO, HttpResponse> {
     let mut sql_builder = sql_builder::SqlBuilder::select_from("users");
     sql_builder.or_where_eq("id", &quote(&user_id));
 
-    let mut conn = match pg_pool.get().await {
+    let rows = match query_constructor_executor(pg_pool, sql_builder).await {
         Ok(x) => x,
-        Err(e) => {
-            return Err(std::io::Error::new(
-                custom_error_to_io_error_kind(CustomError::PoolError),
-                e,
-            ))
-        }
-    };
-    let transaction = match conn.transaction().await {
-        Ok(x) => x,
-        Err(e) => {
-            return Err(std::io::Error::new(
-                custom_error_to_io_error_kind(CustomError::TokioPostgres),
-                e,
-            ))
-        }
-    };
-    let sql = match sql_builder.sql() {
-        Ok(x) => x,
-        Err(e) => {
-            return Err(std::io::Error::new(
-                custom_error_to_io_error_kind(CustomError::AnyhowError),
-                e,
-            ))
-        }
-    };
-    let rows = match transaction.query(sql.as_str(), &[]).await {
-        Ok(x) => x,
-        Err(e) => {
-            return Err(std::io::Error::new(
-                custom_error_to_io_error_kind(CustomError::TokioPostgres),
-                e,
-            ))
-        }
-    };
-    match transaction.commit().await {
-        Ok(_) => (),
-        Err(e) => {
-            return Err(std::io::Error::new(
-                custom_error_to_io_error_kind(CustomError::TokioPostgres),
-                e,
-            ))
-        }
+        Err(e) => return Err(e),
     };
 
     if rows.is_empty() {
-        return Err(std::io::Error::new(
-            ErrorKind::NotFound,
-            "Não foi encontrado um usuário com este id.",
-        ));
+        return Err(HttpResponse::NotFound().json(error_construct(
+            String::from("user"),
+            String::from("not found"),
+            String::from("Não foi encontrado um usuário com este id."),
+            None,
+            None,
+            None,
+        )));
     }
 
     let user_id: uuid::Uuid = rows[0].get("id");
@@ -251,7 +144,7 @@ pub async fn detail_user_repository(
 pub async fn list_users_repository(
     pg_pool: Data<deadpool_postgres::Pool>,
     query_params: Query<QueryParams>,
-) -> Result<Vec<DetailUserDTO>, std::io::Error> {
+) -> Result<Vec<DetailUserDTO>, HttpResponse> {
     let order_by = query_params
         .order_by
         .clone()
@@ -271,63 +164,27 @@ pub async fn list_users_repository(
             _ => true,
         },
     );
-    sql_builder.limit(query_params.limit.unwrap_or(20));
+    let limit = query_params.limit.unwrap_or(20);
+    sql_builder.limit(limit);
     sql_builder.offset(query_params.offset.unwrap_or(0));
 
-    let mut conn = match pg_pool.get().await {
+    let rows = match query_constructor_executor(pg_pool, sql_builder).await {
         Ok(x) => x,
-        Err(e) => {
-            return Err(std::io::Error::new(
-                custom_error_to_io_error_kind(CustomError::PoolError),
-                e,
-            ))
-        }
-    };
-    let transaction = match conn.transaction().await {
-        Ok(x) => x,
-        Err(e) => {
-            return Err(std::io::Error::new(
-                custom_error_to_io_error_kind(CustomError::TokioPostgres),
-                e,
-            ))
-        }
-    };
-    let sql = match sql_builder.sql() {
-        Ok(x) => x,
-        Err(e) => {
-            return Err(std::io::Error::new(
-                custom_error_to_io_error_kind(CustomError::AnyhowError),
-                e,
-            ))
-        }
-    };
-    let rows = match transaction.query(sql.as_str(), &[]).await {
-        Ok(x) => x,
-        Err(e) => {
-            return Err(std::io::Error::new(
-                custom_error_to_io_error_kind(CustomError::TokioPostgres),
-                e,
-            ))
-        }
-    };
-    match transaction.commit().await {
-        Ok(_) => (),
-        Err(e) => {
-            return Err(std::io::Error::new(
-                custom_error_to_io_error_kind(CustomError::TokioPostgres),
-                e,
-            ))
-        }
+        Err(e) => return Err(e),
     };
 
     if rows.is_empty() {
-        return Err(std::io::Error::new(
-            ErrorKind::NotFound,
-            "Não foram encontrados usuários.",
-        ));
+        return Err(HttpResponse::NotFound().json(error_construct(
+            String::from("users"),
+            String::from("not found"),
+            String::from("Não foram encontrados usuários."),
+            None,
+            None,
+            None,
+        )));
     }
 
-    let mut users: Vec<DetailUserDTO> = Vec::new();
+    let mut users: Vec<DetailUserDTO> = Vec::with_capacity(limit as usize);
     for row in rows {
         let user_id: uuid::Uuid = row.get("id");
         let created_at: chrono::DateTime<chrono::Utc> = row.get("created_at");
@@ -340,4 +197,46 @@ pub async fn list_users_repository(
         users.push(user);
     }
     Ok(users)
+}
+
+pub async fn delete_user_repository(
+    pg_pool: Data<deadpool_postgres::Pool>,
+    user_id: String,
+) -> Result<(), HttpResponse> {
+    let mut salt_sql_builder = sql_builder::SqlBuilder::delete_from("salt");
+    salt_sql_builder.or_where_eq("user_id", &quote(&user_id));
+
+    let mut user_sql_builder = sql_builder::SqlBuilder::delete_from("users");
+    user_sql_builder.or_where_eq("id", &quote(&user_id));
+
+    let mut conn = match pg_pool.get().await {
+        Ok(x) => x,
+        Err(e) => return Err(custom_error_to_io_error_kind(CustomError::PoolError(e))),
+    };
+    let transaction = match conn.transaction().await {
+        Ok(x) => x,
+        Err(e) => return Err(custom_error_to_io_error_kind(CustomError::TokioPostgres(e))),
+    };
+    let salt_sql = match salt_sql_builder.sql() {
+        Ok(x) => x,
+        Err(e) => return Err(custom_error_to_io_error_kind(CustomError::AnyhowError(e))),
+    };
+    match transaction.query(salt_sql.as_str(), &[]).await {
+        Ok(x) => x,
+        Err(e) => return Err(custom_error_to_io_error_kind(CustomError::TokioPostgres(e))),
+    };
+    let user_sql = match user_sql_builder.sql() {
+        Ok(x) => x,
+        Err(e) => return Err(custom_error_to_io_error_kind(CustomError::AnyhowError(e))),
+    };
+    match transaction.query(user_sql.as_str(), &[]).await {
+        Ok(x) => x,
+        Err(e) => return Err(custom_error_to_io_error_kind(CustomError::TokioPostgres(e))),
+    };
+    match transaction.commit().await {
+        Ok(_) => (),
+        Err(e) => return Err(custom_error_to_io_error_kind(CustomError::TokioPostgres(e))),
+    };
+
+    Ok(())
 }
