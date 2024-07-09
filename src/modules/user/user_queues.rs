@@ -2,19 +2,19 @@ use super::user_dtos::CreateUserDTO;
 use crate::shared::exceptions::custom_error_to_io_error_kind::{
     custom_error_to_io_error_kind, CustomError,
 };
-use actix_web::web::{Data, Json};
+use actix_web::{
+    web::{Data, Json},
+    HttpResponse,
+};
 use deadpool_postgres::Pool;
 use sql_builder::{quote, SqlBuilder};
-use std::{sync::Arc, time::Duration};
+use std::{io::ErrorKind, sync::Arc, time::Duration};
 
 type SaltData = (String, String, Data<deadpool_postgres::Pool>);
 type QueueEvent = (String, Json<CreateUserDTO>, String, SaltData);
 pub type CreateUserAppQueue = deadqueue::unlimited::Queue<QueueEvent>;
 
-async fn insert_user_queue(
-    pool: Pool,
-    queue: Arc<CreateUserAppQueue>,
-) -> Result<(), std::io::Error> {
+async fn insert_user_queue(pool: Pool, queue: Arc<CreateUserAppQueue>) -> Result<(), HttpResponse> {
     let mut user_sql = String::new();
     let mut user_salt_sql = String::new();
     while queue.len() > 0 {
@@ -52,48 +52,23 @@ async fn insert_user_queue(
     }
     let mut conn = match pool.get().await {
         Ok(x) => x,
-        Err(e) => {
-            return Err(std::io::Error::new(
-                custom_error_to_io_error_kind(CustomError::PoolError),
-                e,
-            ))
-        }
+        Err(e) => return Err(custom_error_to_io_error_kind(CustomError::PoolError(e))),
     };
     let transaction = match conn.transaction().await {
         Ok(x) => x,
-        Err(e) => {
-            return Err(std::io::Error::new(
-                custom_error_to_io_error_kind(CustomError::TokioPostgres),
-                e,
-            ))
-        }
+        Err(e) => return Err(custom_error_to_io_error_kind(CustomError::TokioPostgres(e))),
     };
     match transaction.batch_execute(&user_sql).await {
         Ok(_) => (),
-        Err(e) => {
-            return Err(std::io::Error::new(
-                custom_error_to_io_error_kind(CustomError::TokioPostgres),
-                e,
-            ))
-        }
+        Err(e) => return Err(custom_error_to_io_error_kind(CustomError::TokioPostgres(e))),
     };
     match transaction.batch_execute(&user_salt_sql).await {
         Ok(_) => (),
-        Err(e) => {
-            return Err(std::io::Error::new(
-                custom_error_to_io_error_kind(CustomError::TokioPostgres),
-                e,
-            ))
-        }
+        Err(e) => return Err(custom_error_to_io_error_kind(CustomError::TokioPostgres(e))),
     };
     match transaction.commit().await {
         Ok(_) => (),
-        Err(e) => {
-            return Err(std::io::Error::new(
-                custom_error_to_io_error_kind(CustomError::TokioPostgres),
-                e,
-            ))
-        }
+        Err(e) => return Err(custom_error_to_io_error_kind(CustomError::TokioPostgres(e))),
     };
     Ok(())
 }
@@ -108,7 +83,15 @@ pub async fn user_flush_queue(pool_async: Pool, queue_async: Arc<CreateUserAppQu
         match insert_user_queue(pool_async.clone(), queue).await {
             Ok(_) => (),
             Err(e) => {
-                std::io::Error::new(e.kind(), e);
+                let status = e.status();
+                let kind: ErrorKind;
+                if status == 503 {
+                    kind = ErrorKind::ConnectionAborted;
+                } else {
+                    kind = ErrorKind::Other;
+                }
+                let message = e.error().unwrap().to_string();
+                std::io::Error::new(kind, message);
             }
         }
     }
