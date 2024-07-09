@@ -1,4 +1,4 @@
-use crate::{shared::structs::jwt_claims::Claims, utils::error_construct::error_construct};
+use crate::{shared::treaties::jwt_treated::JWT, utils::error_construct::error_construct};
 use actix_web::{http::header::HeaderMap, HttpResponse};
 
 pub fn jwt_token_middleware(headers: &HeaderMap) -> Result<(), HttpResponse> {
@@ -31,19 +31,8 @@ pub fn jwt_token_middleware(headers: &HeaderMap) -> Result<(), HttpResponse> {
         }
     };
 
-    match jsonwebtoken::decode::<Claims>(
-        token,
-        &jsonwebtoken::DecodingKey::from_secret(std::env::var("JWT_ACCESS_KEY").unwrap().as_ref()),
-        &jsonwebtoken::Validation::default(),
-    ) {
+    match JWT::access_token_decode(token) {
         Ok(_) => Ok(()),
-        Err(e) => Err(HttpResponse::Unauthorized().json(error_construct(
-            String::from("bearer token"),
-            String::from("unauthorized"),
-            e.to_string(),
-            None,
-            None,
-            None,
-        ))),
+        Err(e) => Err(e),
     }
 }
