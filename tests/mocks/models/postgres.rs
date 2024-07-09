@@ -12,7 +12,8 @@ impl PostgresModels {
         cfg.dbname = Some(env::var("DB_NAME").unwrap());
         cfg.user = Some(env::var("DB_USER").unwrap());
         cfg.password = Some(env::var("DB_PASSWORD").unwrap());
-        cfg.pool = PoolConfig::new(env::var("POOL_SIZE").unwrap().parse::<usize>().unwrap()).into();
+        cfg.pool =
+            PoolConfig::new(env::var("DB_POOL_SIZE").unwrap().parse::<usize>().unwrap()).into();
 
         cfg.create_pool(Some(Runtime::Tokio1), NoTls).unwrap()
     }
@@ -24,7 +25,8 @@ impl PostgresModels {
         cfg.dbname = Some(env::var("DB_NAME").unwrap());
         cfg.user = Some(env::var("DB_USER").unwrap());
         cfg.password = Some(String::from("5555"));
-        cfg.pool = PoolConfig::new(env::var("POOL_SIZE").unwrap().parse::<usize>().unwrap()).into();
+        cfg.pool =
+            PoolConfig::new(env::var("DB_POOL_SIZE").unwrap().parse::<usize>().unwrap()).into();
 
         cfg.create_pool(Some(Runtime::Tokio1), NoTls).unwrap()
     }
