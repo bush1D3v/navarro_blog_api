@@ -8,7 +8,7 @@ use std::{env, time::Duration};
 pub struct Redis {}
 
 impl Redis {
-    pub async fn set_redis(redis_pool: &Pool, key: &str, value: &str) -> RedisResult<()> {
+    pub async fn set(redis_pool: &Pool, key: &str, value: &str) -> RedisResult<()> {
         let mut redis_conn = redis_pool.get().await.unwrap();
         cmd("SET")
             .arg(&[key, value])
@@ -16,11 +16,19 @@ impl Redis {
             .await
     }
 
-    pub async fn get_redis(redis_pool: &Pool, key: &str) -> RedisResult<String> {
+    pub async fn get(redis_pool: &Pool, key: &str) -> RedisResult<String> {
         let mut redis_conn = redis_pool.get().await.unwrap();
         cmd("GET")
             .arg(&[key])
             .query_async::<_, String>(&mut redis_conn)
+            .await
+    }
+
+    pub async fn delete(redis_pool: &Pool, key: &str) -> RedisResult<i32> {
+        let mut redis_conn = redis_pool.get().await.unwrap();
+        cmd("DEL")
+            .arg(&[key])
+            .query_async::<_, i32>(&mut redis_conn)
             .await
     }
 
@@ -32,13 +40,13 @@ impl Redis {
                 env::var("REDIS_PORT").unwrap().parse().unwrap(),
             ),
             redis: RedisConnectionInfo {
-                db: 0,
-                username: None,
-                password: None,
+                db: env::var("REDIS_NUMBER").unwrap().parse().unwrap(),
+                username: Some(env::var("REDIS_USER").unwrap()),
+                password: Some(env::var("REDIS_PASSWORD").unwrap()),
             },
         });
         cfg.pool = Some(PoolConfig {
-            max_size: 9995,
+            max_size: env::var("REDIS_POOL_SIZE").unwrap().parse().unwrap(),
             timeouts: Timeouts {
                 wait: Some(Duration::from_secs(60)),
                 create: Some(Duration::from_secs(60)),
