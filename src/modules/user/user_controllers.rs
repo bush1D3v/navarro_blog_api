@@ -277,7 +277,7 @@ async fn login_user_response_constructor(
     email: &str,
 ) -> HttpResponse<BoxBody> {
     let _ = Redis::set(&redis_pool, &service_resp.user.id, &string_user).await;
-    let _ = Redis::set(&redis_pool, email, &string_user).await;
+    let _ = Redis::set(&redis_pool, email, string_user).await;
     HttpResponse::Ok().json(LoginUserControllerResponse {
         access_token: service_resp.access_token,
         access_expires_in: service_resp.access_expires_in,
@@ -597,26 +597,25 @@ async fn delete_user(
         Err(e) => return e,
     };
     match body.validate() {
-        Ok(_) => match Redis::get(&redis_pool, &user_id).await {
-            Ok(string_user) => {
-                return match delete_user_service(
-                    pg_pool,
-                    queue,
-                    body.password.clone(),
-                    user_id.clone(),
-                    Some(string_user),
-                )
-                .await
-                {
-                    Ok(email) => {
-                        delete_user_response_constructor(&redis_pool, &user_id, &email).await
-                    }
-                    Err(e) => e,
-                }
-            }
-            Err(_) => (),
-        },
+        Ok(_) => (),
         Err(e) => return HttpResponse::BadRequest().json(e),
+    };
+    match Redis::get(&redis_pool, &user_id).await {
+        Ok(string_user) => {
+            return match delete_user_service(
+                pg_pool,
+                queue,
+                body.password.clone(),
+                user_id.clone(),
+                Some(string_user),
+            )
+            .await
+            {
+                Ok(email) => delete_user_response_constructor(&redis_pool, &user_id, &email).await,
+                Err(e) => e,
+            }
+        }
+        Err(_) => (),
     };
     match delete_user_service(pg_pool, queue, body.password.clone(), user_id.clone(), None).await {
         Ok(email) => delete_user_response_constructor(&redis_pool, &user_id, &email).await,
