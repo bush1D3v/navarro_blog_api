@@ -1,11 +1,10 @@
 use crate::{
     modules::user::{
         user_controllers::{
-            DetailUserControllerResponse, ListUserControllerResponse, LoginUserControllerResponse,
             __path_delete_user, __path_detail_user, __path_insert_user, __path_list_users,
-            __path_login_user, __path_user_options,
+            __path_login_user, __path_put_user, __path_user_options,
         },
-        user_dtos::{CreateUserDTO, DeleteUserDTO, DetailUserDTO, LoginUserDTO},
+        user_dtos::{DeleteUserDTO, DetailUserDTO, InsertUserDTO, LoginUserDTO, PutUserDTO},
     },
     shared::structs::{
         error_struct::{ErrorParams, ErrorStruct},
@@ -21,16 +20,14 @@ use utoipa_swagger_ui::SwaggerUi;
 pub fn api_doc() -> SwaggerUi {
     #[derive(OpenApi)]
     #[openapi(
-		paths(user_options, insert_user, login_user, detail_user, list_users, delete_user),
+		paths(user_options, insert_user, login_user, detail_user, list_users, delete_user, put_user),
 		components(
 			schemas(
-				CreateUserDTO,
+				InsertUserDTO,
 				LoginUserDTO,
                 DetailUserDTO,
                 DeleteUserDTO,
-				LoginUserControllerResponse,
-                DetailUserControllerResponse,
-                ListUserControllerResponse,
+                PutUserDTO,
                 ErrorStruct,
 				ErrorParams,
                 QueryParams,
