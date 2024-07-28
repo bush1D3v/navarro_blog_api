@@ -9,6 +9,7 @@ mod unitary_specs {
             postgres::PostgresModels,
             user::{QueryParamsModels, UserModels},
         },
+        structs::user::{MockPutUserDTO, MockUserDTO},
     };
     use actix_web::{
         body, test,
@@ -17,16 +18,15 @@ mod unitary_specs {
     use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
     use navarro_blog_api::{
         modules::user::{
-            user_dtos::UserDTO,
             user_providers::{email_exists, email_not_exists},
-            user_queues::CreateUserAppQueue,
+            user_queues::{DeleteUserAppQueue, InsertUserAppQueue, PutUserAppQueue},
             user_repositories::{
                 delete_user_repository, detail_user_repository, insert_user_repository,
-                list_users_repository, login_user_repository,
+                list_users_repository, login_user_repository, put_user_repository,
             },
             user_services::{
                 delete_user_service, detail_user_service, insert_user_service, list_users_service,
-                login_user_service,
+                login_user_service, put_user_service,
             },
         },
         shared::structs::jwt_claims::Claims,
@@ -37,13 +37,13 @@ mod unitary_specs {
     async fn _insert_user_service() {
         dotenv::dotenv().ok();
 
-        let queue = Arc::new(CreateUserAppQueue::new());
+        let queue = Arc::new(InsertUserAppQueue::new());
         let user = UserModels::simple_user_model();
 
         let resp = insert_user_service(
             web::Data::new(queue.clone()),
             web::Data::new(PostgresModels::postgres_success()),
-            web::Json(user.clone()),
+            web::Json(user.clone().into()),
         )
         .await
         .unwrap();
@@ -63,13 +63,14 @@ mod unitary_specs {
         assert!(bcrypt::verify(&user.password, &password_without_salt).unwrap());
         assert!(!resp.id.is_empty());
         assert!(!resp.created_at.is_empty());
+        assert!(resp.updated_at.is_none());
     }
 
     #[test]
-    async fn _insert_user_service_conflict_error() {
+    async fn _insert_user_service_conflict_error_service_unavailable() {
         dotenv::dotenv().ok();
 
-        let queue = Arc::new(CreateUserAppQueue::new());
+        let queue = Arc::new(InsertUserAppQueue::new());
         let user = UserModels::simple_user_model();
 
         FunctionalTester::insert_in_db_users(UserModels::complete_user_model_hashed()).await;
@@ -77,7 +78,7 @@ mod unitary_specs {
         let resp = insert_user_service(
             web::Data::new(queue.clone()),
             web::Data::new(PostgresModels::postgres_success()),
-            web::Json(user.clone()),
+            web::Json(user.clone().into()),
         )
         .await
         .err()
@@ -90,7 +91,7 @@ mod unitary_specs {
         assert!(bytes.contains("email"));
         assert!(bytes.contains("conflict"));
         assert!(bytes.contains("Este e-mail já está sendo utilizado por outro usuário."));
-        assert!(bytes.contains(format!("{}", user.email).as_str()));
+        assert!(bytes.contains(&format!("{}", user.email)));
 
         FunctionalTester::delete_from_database(
             TablesEnum::Users,
@@ -103,7 +104,7 @@ mod unitary_specs {
     async fn _insert_user_service_error_service_unavailable() {
         dotenv::dotenv().ok();
 
-        let queue = Arc::new(CreateUserAppQueue::new());
+        let queue = Arc::new(InsertUserAppQueue::new());
         let user = UserModels::simple_user_model();
 
         FunctionalTester::insert_in_db_users(UserModels::complete_user_model_hashed()).await;
@@ -111,7 +112,7 @@ mod unitary_specs {
         let resp = insert_user_service(
             web::Data::new(queue.clone()),
             web::Data::new(PostgresModels::postgres_error()),
-            web::Json(user.clone()),
+            web::Json(user.clone().into()),
         )
         .await
         .err()
@@ -135,14 +136,13 @@ mod unitary_specs {
     async fn _insert_user_repository() {
         dotenv::dotenv().ok();
 
-        let queue = Arc::new(CreateUserAppQueue::new());
+        let queue = Arc::new(InsertUserAppQueue::new());
 
         let user = UserModels::complete_user_model();
 
         let resp = insert_user_repository(
             web::Data::new(queue.clone()),
-            web::Data::new(PostgresModels::postgres_success()),
-            web::Json(UserModels::simple_user_model()),
+            web::Json(UserModels::simple_user_model().into()),
             user.id.clone(),
             uuid::Uuid::new_v4().to_string(),
         )
@@ -156,6 +156,7 @@ mod unitary_specs {
         assert!(resp
             .created_at
             .contains(&user.created_at.chars().take(10).collect::<String>()));
+        assert!(resp.updated_at.is_none());
     }
 
     #[test]
@@ -173,7 +174,7 @@ mod unitary_specs {
         let login_user = UserModels::login_user_model();
 
         let resp = login_user_service(
-            web::Json(login_user.clone()),
+            web::Json(login_user.clone().into()),
             web::Data::new(PostgresModels::postgres_success()),
             false,
         )
@@ -221,7 +222,7 @@ mod unitary_specs {
         dotenv::dotenv().ok();
 
         let resp = login_user_service(
-            web::Json(UserModels::login_user_model()),
+            web::Json(UserModels::login_user_model().into()),
             web::Data::new(PostgresModels::postgres_success()),
             false,
         )
@@ -256,7 +257,7 @@ mod unitary_specs {
         login_user.password = String::from("teste");
 
         let resp = login_user_service(
-            web::Json(login_user.clone()),
+            web::Json(login_user.clone().into()),
             web::Data::new(PostgresModels::postgres_success()),
             false,
         )
@@ -271,8 +272,8 @@ mod unitary_specs {
         assert!(bytes.contains("email/password"));
         assert!(bytes.contains("unauthorized"));
         assert!(bytes.contains("E-mail e/ou senha incorretos."));
-        assert!(bytes.contains(login_user.email.as_str()));
-        assert!(bytes.contains(login_user.password.as_str()));
+        assert!(bytes.contains(&login_user.email));
+        assert!(bytes.contains(&login_user.password));
 
         FunctionalTester::delete_from_database(TablesEnum::Salt, Some(vec![("user_id", &user.id)]))
             .await;
@@ -298,7 +299,7 @@ mod unitary_specs {
         let login_user = UserModels::login_user_model();
 
         let resp = login_user_service(
-            web::Json(login_user.clone()),
+            web::Json(login_user.clone().into()),
             web::Data::new(PostgresModels::postgres_error()),
             false,
         )
@@ -586,7 +587,7 @@ mod unitary_specs {
         dotenv::dotenv().ok();
 
         let total_users = 5;
-        let mut users: Vec<UserDTO> = Vec::with_capacity(total_users);
+        let mut users: Vec<MockUserDTO> = Vec::with_capacity(total_users);
 
         for i in 0..total_users as usize {
             let mut user = UserModels::complete_user_model_hashed();
@@ -626,7 +627,7 @@ mod unitary_specs {
         dotenv::dotenv().ok();
 
         let total_users = 5;
-        let mut users: Vec<UserDTO> = Vec::with_capacity(total_users);
+        let mut users: Vec<MockUserDTO> = Vec::with_capacity(total_users);
 
         for i in 0..total_users {
             let mut user = UserModels::complete_user_model_hashed();
@@ -672,7 +673,7 @@ mod unitary_specs {
         dotenv::dotenv().ok();
 
         let total_users = 5;
-        let mut users: Vec<UserDTO> = Vec::with_capacity(total_users);
+        let mut users: Vec<MockUserDTO> = Vec::with_capacity(total_users);
 
         for i in 0..total_users as usize {
             let mut user = UserModels::complete_user_model_hashed();
@@ -718,7 +719,7 @@ mod unitary_specs {
         dotenv::dotenv().ok();
 
         let total_users = 5;
-        let mut users: Vec<UserDTO> = Vec::with_capacity(total_users);
+        let mut users: Vec<MockUserDTO> = Vec::with_capacity(total_users);
 
         for i in 0..total_users as usize {
             let mut user = UserModels::complete_user_model_hashed();
@@ -757,7 +758,7 @@ mod unitary_specs {
         dotenv::dotenv().ok();
 
         let total_users = 5;
-        let mut users: Vec<UserDTO> = Vec::with_capacity(total_users);
+        let mut users: Vec<MockUserDTO> = Vec::with_capacity(total_users);
 
         for i in 0..total_users as usize {
             let mut user = UserModels::complete_user_model_hashed();
@@ -841,7 +842,7 @@ mod unitary_specs {
         dotenv::dotenv().ok();
 
         let total_users = 5;
-        let mut users: Vec<UserDTO> = Vec::with_capacity(total_users);
+        let mut users: Vec<MockUserDTO> = Vec::with_capacity(total_users);
 
         for i in 0..total_users as usize {
             let mut user = UserModels::complete_user_model_hashed();
@@ -881,7 +882,7 @@ mod unitary_specs {
         dotenv::dotenv().ok();
 
         let total_users = 5;
-        let mut users: Vec<UserDTO> = Vec::with_capacity(total_users);
+        let mut users: Vec<MockUserDTO> = Vec::with_capacity(total_users);
 
         for i in 0..total_users {
             let mut user = UserModels::complete_user_model_hashed();
@@ -927,7 +928,7 @@ mod unitary_specs {
         dotenv::dotenv().ok();
 
         let total_users = 5;
-        let mut users: Vec<UserDTO> = Vec::with_capacity(total_users);
+        let mut users: Vec<MockUserDTO> = Vec::with_capacity(total_users);
 
         for i in 0..total_users as usize {
             let mut user = UserModels::complete_user_model_hashed();
@@ -973,7 +974,7 @@ mod unitary_specs {
         dotenv::dotenv().ok();
 
         let total_users = 5;
-        let mut users: Vec<UserDTO> = Vec::with_capacity(total_users);
+        let mut users: Vec<MockUserDTO> = Vec::with_capacity(total_users);
 
         for i in 0..total_users as usize {
             let mut user = UserModels::complete_user_model_hashed();
@@ -1012,7 +1013,7 @@ mod unitary_specs {
         dotenv::dotenv().ok();
 
         let total_users = 5;
-        let mut users: Vec<UserDTO> = Vec::with_capacity(total_users);
+        let mut users: Vec<MockUserDTO> = Vec::with_capacity(total_users);
 
         for i in 0..total_users as usize {
             let mut user = UserModels::complete_user_model_hashed();
@@ -1095,43 +1096,39 @@ mod unitary_specs {
     async fn _delete_user_service() {
         dotenv::dotenv().ok();
 
+        let queue = Arc::new(DeleteUserAppQueue::new());
+
         let salt = uuid::Uuid::new_v4().to_string();
         let mut user = UserModels::complete_user_model_hashed();
         user.password = format!("{}{}", user.password, salt);
         FunctionalTester::insert_in_db_users(user.clone()).await;
         FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
 
-        let resp = delete_user_service(
+        let email_resp = delete_user_service(
             web::Data::new(PostgresModels::postgres_success()),
+            web::Data::new(queue),
             UserModels::complete_user_model().password,
             user.id,
+            None,
         )
         .await
         .unwrap();
 
-        assert_eq!(resp.email, user.email);
+        assert_eq!(email_resp, user.email);
 
-        assert!(
-            FunctionalTester::cant_see_in_database(
-                TablesEnum::Salt,
-                "salt",
-                Some(vec![("salt", &salt)]),
-            )
-            .await
-        );
-        assert!(
-            FunctionalTester::cant_see_in_database(
-                TablesEnum::Users,
-                "email",
-                Some(vec![("email", &user.email)]),
-            )
-            .await
-        );
+        FunctionalTester::delete_from_database(TablesEnum::Salt, Some(vec![("salt", &salt)])).await;
+        FunctionalTester::delete_from_database(
+            TablesEnum::Users,
+            Some(vec![("email", &user.email)]),
+        )
+        .await;
     }
 
     #[test]
     async fn _delete_user_service_error_not_found() {
         dotenv::dotenv().ok();
+
+        let queue = Arc::new(DeleteUserAppQueue::new());
 
         let salt = uuid::Uuid::new_v4().to_string();
         let mut user = UserModels::complete_user_model_hashed();
@@ -1143,8 +1140,10 @@ mod unitary_specs {
 
         let resp = delete_user_service(
             web::Data::new(PostgresModels::postgres_success()),
+            web::Data::new(queue),
             UserModels::complete_user_model().password,
             user.id,
+            None,
         )
         .await
         .err()
@@ -1164,6 +1163,8 @@ mod unitary_specs {
     async fn _delete_user_service_error_unauthorized() {
         dotenv::dotenv().ok();
 
+        let queue = Arc::new(DeleteUserAppQueue::new());
+
         let salt = uuid::Uuid::new_v4().to_string();
         let mut user = UserModels::complete_user_model_hashed();
         user.password = format!("{}{}", user.password, salt);
@@ -1174,8 +1175,10 @@ mod unitary_specs {
 
         let resp = delete_user_service(
             web::Data::new(PostgresModels::postgres_success()),
+            web::Data::new(queue),
             error_password.clone(),
             user.id,
+            None,
         )
         .await
         .err()
@@ -1189,7 +1192,7 @@ mod unitary_specs {
         assert!(bytes.contains("password"));
         assert!(bytes.contains("unauthorized"));
         assert!(bytes.contains("Senha incorreta."));
-        assert!(bytes.contains(error_password.as_str()));
+        assert!(bytes.contains(&error_password));
 
         assert!(
             FunctionalTester::can_see_in_database(
@@ -1220,6 +1223,8 @@ mod unitary_specs {
     async fn _delete_user_service_error_service_unavailable() {
         dotenv::dotenv().ok();
 
+        let queue = Arc::new(DeleteUserAppQueue::new());
+
         let salt = uuid::Uuid::new_v4().to_string();
         let mut user = UserModels::complete_user_model_hashed();
         user.password = format!("{}{}", user.password, salt);
@@ -1228,8 +1233,10 @@ mod unitary_specs {
 
         let resp = delete_user_service(
             web::Data::new(PostgresModels::postgres_error()),
+            web::Data::new(queue),
             user.password.clone(),
             user.id,
+            None,
         )
         .await
         .err()
@@ -1272,40 +1279,33 @@ mod unitary_specs {
     async fn _delete_user_repository() {
         dotenv::dotenv().ok();
 
+        let queue = Arc::new(DeleteUserAppQueue::new());
+
         let salt = uuid::Uuid::new_v4().to_string();
         let mut user = UserModels::complete_user_model_hashed();
         user.password = format!("{}{}", user.password, salt);
         FunctionalTester::insert_in_db_users(user.clone()).await;
         FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
 
-        let resp =
-            delete_user_repository(web::Data::new(PostgresModels::postgres_success()), user.id)
-                .await
-                .unwrap();
+        let resp = delete_user_repository(web::Data::new(queue), user.id)
+            .await
+            .unwrap();
 
         assert_eq!(resp, ());
 
-        assert!(
-            FunctionalTester::cant_see_in_database(
-                TablesEnum::Salt,
-                "salt",
-                Some(vec![("salt", &salt)]),
-            )
-            .await
-        );
-        assert!(
-            FunctionalTester::cant_see_in_database(
-                TablesEnum::Users,
-                "email",
-                Some(vec![("email", &user.email)]),
-            )
-            .await
-        );
+        FunctionalTester::delete_from_database(TablesEnum::Salt, Some(vec![("salt", &salt)])).await;
+        FunctionalTester::delete_from_database(
+            TablesEnum::Users,
+            Some(vec![("email", &user.email)]),
+        )
+        .await;
     }
 
     #[test]
-    async fn _delete_user_repository_error_service_unavailable() {
+    async fn _put_user_service() {
         dotenv::dotenv().ok();
+
+        let queue = Arc::new(PutUserAppQueue::new());
 
         let salt = uuid::Uuid::new_v4().to_string();
         let mut user = UserModels::complete_user_model_hashed();
@@ -1313,36 +1313,240 @@ mod unitary_specs {
         FunctionalTester::insert_in_db_users(user.clone()).await;
         FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
 
-        let resp =
-            delete_user_repository(web::Data::new(PostgresModels::postgres_error()), user.id)
-                .await
-                .err()
-                .unwrap();
+        let new_email = String::from("bush1d3v2@gmail.com");
+        let new_password = String::from("123456789%");
 
-        assert_eq!(resp.status(), 503);
+        let put_user_dto = MockPutUserDTO {
+            password: UserModels::complete_user_model().password,
+            email: UserModels::complete_user_model_hashed().email,
+            new_password: new_password.clone(),
+            new_email: new_email.clone(),
+        };
+
+        let resp = put_user_service(
+            web::Data::new(PostgresModels::postgres_success()),
+            web::Data::new(queue),
+            put_user_dto.into(),
+            user.id.clone(),
+            None,
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(resp.id, user.id);
+        assert_eq!(resp.name, user.name);
+        assert_eq!(resp.email, new_email);
+        assert_eq!(
+            resp.created_at.chars().take(10).collect::<String>(),
+            user.created_at.chars().take(10).collect::<String>()
+        );
+
+        FunctionalTester::delete_from_database(TablesEnum::Salt, Some(vec![("salt", &salt)])).await;
+        FunctionalTester::delete_from_database(
+            TablesEnum::Users,
+            Some(vec![("email", &user.email)]),
+        )
+        .await;
+    }
+
+    #[test]
+    async fn _put_user_service_error_forbidden() {
+        dotenv::dotenv().ok();
+
+        let queue = Arc::new(PutUserAppQueue::new());
+
+        let salt = uuid::Uuid::new_v4().to_string();
+        let mut user = UserModels::complete_user_model_hashed();
+        user.password = format!("{}{}", user.password, salt);
+        FunctionalTester::insert_in_db_users(user.clone()).await;
+        FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
+
+        let new_email = String::from("bush1d3v2@gmail.com");
+        let new_password = String::from("123456789%");
+
+        let put_user_dto = MockPutUserDTO {
+            password: UserModels::complete_user_model().password,
+            email: String::from("bush1d3v2@gmail.com"),
+            new_password,
+            new_email: new_email.clone(),
+        };
+
+        let resp = put_user_service(
+            web::Data::new(PostgresModels::postgres_success()),
+            web::Data::new(queue),
+            put_user_dto.into(),
+            user.id,
+            None,
+        )
+        .await
+        .err()
+        .unwrap();
+
+        assert_eq!(resp.status(), 403);
 
         let bytes =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
 
-        assert!(bytes.contains("database"));
-        assert!(bytes.contains("service unavailable"));
+        assert!(bytes.contains("user"));
+        assert!(bytes.contains("forbidden"));
+        assert!(bytes.contains("Você não tem permissão para alterar informações associadas a um e-mail que não está vinculado ao seu ID de usuário."));
+
+        FunctionalTester::delete_from_database(TablesEnum::Salt, Some(vec![("salt", &salt)])).await;
+        FunctionalTester::delete_from_database(
+            TablesEnum::Users,
+            Some(vec![("email", &user.email)]),
+        )
+        .await;
+    }
+
+    #[test]
+    async fn _put_user_service_error_unauthorized() {
+        dotenv::dotenv().ok();
+
+        let queue = Arc::new(PutUserAppQueue::new());
+
+        let salt = uuid::Uuid::new_v4().to_string();
+        let mut user = UserModels::complete_user_model_hashed();
+        user.password = format!("{}{}", user.password, salt);
+        FunctionalTester::insert_in_db_users(user.clone()).await;
+        FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
+
+        let new_email = String::from("bush1d3v2@gmail.com");
+        let new_password = String::from("123456789%");
+
+        let put_user_dto = MockPutUserDTO {
+            password: UserModels::complete_user_model().password + "1",
+            email: UserModels::complete_user_model_hashed().email,
+            new_password,
+            new_email: new_email.clone(),
+        };
+
+        let resp = put_user_service(
+            web::Data::new(PostgresModels::postgres_success()),
+            web::Data::new(queue),
+            put_user_dto.into(),
+            user.id,
+            None,
+        )
+        .await
+        .err()
+        .unwrap();
+
+        assert_eq!(resp.status(), 401);
+
+        let bytes =
+            String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
+
+        assert!(bytes.contains("password"));
+        assert!(bytes.contains("unauthorized"));
+        assert!(bytes.contains("Senha incorreta."));
 
         assert!(
-            FunctionalTester::can_see_in_database(
-                TablesEnum::Salt,
-                "salt",
-                Some(vec![("salt", &salt)]),
+            FunctionalTester::cant_see_in_database(
+                TablesEnum::Users,
+                "email",
+                Some(vec![("email", &new_email)]),
             )
             .await
         );
+
+        FunctionalTester::delete_from_database(TablesEnum::Salt, Some(vec![("salt", &salt)])).await;
+        FunctionalTester::delete_from_database(
+            TablesEnum::Users,
+            Some(vec![("email", &user.email)]),
+        )
+        .await;
+    }
+
+    #[test]
+    async fn _put_user_service_error_conflict() {
+        dotenv::dotenv().ok();
+
+        let queue = Arc::new(PutUserAppQueue::new());
+
+        let salt = uuid::Uuid::new_v4().to_string();
+        let mut user = UserModels::complete_user_model_hashed();
+        user.password = format!("{}{}", user.password, salt);
+        FunctionalTester::insert_in_db_users(user.clone()).await;
+        FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
+
+        let new_password = String::from("123456789%");
+
+        let put_user_dto = MockPutUserDTO {
+            password: UserModels::complete_user_model().password,
+            email: UserModels::complete_user_model_hashed().email,
+            new_password,
+            new_email: UserModels::complete_user_model_hashed().email,
+        };
+
+        let resp = put_user_service(
+            web::Data::new(PostgresModels::postgres_success()),
+            web::Data::new(queue),
+            put_user_dto.into(),
+            user.id,
+            None,
+        )
+        .await
+        .err()
+        .unwrap();
+
+        assert_eq!(resp.status(), 409);
+
+        let bytes =
+            String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
+
+        assert!(bytes.contains("email"));
+        assert!(bytes.contains("conflict"));
+        assert!(bytes.contains("Este e-mail já está sendo utilizado por outro usuário"));
+
         assert!(
             FunctionalTester::can_see_in_database(
                 TablesEnum::Users,
                 "email",
-                Some(vec![("email", &user.email)]),
+                Some(vec![("email", &user.email.clone())]),
             )
             .await
         );
+
+        FunctionalTester::delete_from_database(TablesEnum::Salt, Some(vec![("salt", &salt)])).await;
+        FunctionalTester::delete_from_database(
+            TablesEnum::Users,
+            Some(vec![("email", &user.email)]),
+        )
+        .await;
+    }
+
+    #[test]
+    async fn _put_user_repository() {
+        dotenv::dotenv().ok();
+
+        let queue = Arc::new(PutUserAppQueue::new());
+
+        let salt = uuid::Uuid::new_v4().to_string();
+        let mut user = UserModels::complete_user_model_hashed();
+        user.password = format!("{}{}", user.password, salt);
+        FunctionalTester::insert_in_db_users(user.clone()).await;
+        FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
+
+        let new_email = String::from("bush1d3v2@gmail.com");
+        let new_password = String::from("123456789%");
+
+        let put_user_dto = MockPutUserDTO {
+            password: UserModels::complete_user_model().password,
+            email: UserModels::complete_user_model_hashed().email,
+            new_password,
+            new_email: new_email.clone(),
+        };
+
+        let resp = put_user_repository(
+            web::Data::new(queue),
+            web::Json(put_user_dto.into()),
+            user.id,
+        )
+        .await
+        .unwrap();
+
+        assert!(resp.contains(&user.created_at.chars().take(10).collect::<String>()));
 
         FunctionalTester::delete_from_database(TablesEnum::Salt, Some(vec![("salt", &salt)])).await;
         FunctionalTester::delete_from_database(
@@ -1488,6 +1692,9 @@ mod integration_specs {
             redis::RedisModels,
             user::{QueryParamsModels, UserModels},
         },
+        structs::user::{
+            MockDeleteUserDTO, MockDetailUserDTO, MockLoginUserDTO, MockPutUserDTO, MockUserDTO,
+        },
     };
     use actix_web::{
         body,
@@ -1499,9 +1706,11 @@ mod integration_specs {
     use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
     use navarro_blog_api::{
         modules::user::{
-            user_controllers::{user_controllers_module, ListUserControllerResponse},
-            user_dtos::{DeleteUserDTO, DetailUserDTO, LoginUserDTO, UserDTO},
-            user_queues::{user_flush_queue, CreateUserAppQueue},
+            user_controllers::user_controllers_module,
+            user_queues::{
+                delete_user_flush_queue, insert_user_flush_queue, put_user_flush_queue,
+                DeleteUserAppQueue, InsertUserAppQueue, PutUserAppQueue,
+            },
         },
         shared::structs::{jwt_claims::Claims, query_params::QueryParams},
     };
@@ -1510,11 +1719,12 @@ mod integration_specs {
     use tokio::time::{sleep, Duration};
 
     pub enum UserTypes {
-        InsertUserDTO(UserDTO),
-        LoginUserDTO(LoginUserDTO),
-        DetailUserDTO(DetailUserDTO, Option<String>),
+        InsertUserDTO(MockUserDTO),
+        LoginUserDTO(MockLoginUserDTO),
+        DetailUserDTO(MockDetailUserDTO, Option<String>),
         ListUsersDTO(Query<QueryParams>, Option<String>),
-        DeleteUserDTO(DeleteUserDTO, Option<String>, Option<String>),
+        DeleteUserDTO(MockDeleteUserDTO, Option<String>, Option<String>),
+        PutUserDTO(MockPutUserDTO, Option<String>, Option<String>),
     }
 
     async fn user_call_http_before(user: UserTypes, pool_error: bool) -> ServiceResponse {
@@ -1526,16 +1736,35 @@ mod integration_specs {
         } else {
             pool = PostgresModels::postgres_success();
         }
-        let pool_async = pool.clone();
-        let queue = Arc::new(CreateUserAppQueue::new());
-        let queue_async = queue.clone();
-        tokio::spawn(async move { user_flush_queue(pool_async, queue_async).await });
+        let insert_pool_async = pool.clone();
+        let insert_user_queue = Arc::new(InsertUserAppQueue::new());
+        let insert_user_queue_async = insert_user_queue.clone();
+
+        let delete_pool_async = pool.clone();
+        let delete_user_queue = Arc::new(DeleteUserAppQueue::new());
+        let delete_user_queue_async = delete_user_queue.clone();
+
+        let put_pool_async = pool.clone();
+        let put_user_queue = Arc::new(PutUserAppQueue::new());
+        let put_user_queue_async = put_user_queue.clone();
+
+        tokio::spawn(async move {
+            insert_user_flush_queue(insert_pool_async, insert_user_queue_async).await
+        });
+        tokio::spawn(async move {
+            delete_user_flush_queue(delete_pool_async, delete_user_queue_async).await
+        });
+        tokio::spawn(
+            async move { put_user_flush_queue(put_pool_async, put_user_queue_async).await },
+        );
 
         let app = test::init_service(
             App::new()
                 .app_data(Data::new(pool.clone()))
                 .app_data(Data::new(redis_pool.clone()))
-                .app_data(Data::new(queue.clone()))
+                .app_data(Data::new(insert_user_queue.clone()))
+                .app_data(Data::new(delete_user_queue.clone()))
+                .app_data(Data::new(put_user_queue.clone()))
                 .service(user_controllers_module()),
         )
         .await;
@@ -1562,7 +1791,7 @@ mod integration_specs {
                 let offset = query_params.offset.unwrap_or(0);
 
                 let path = format!("/user?limit={limit}&offset={offset}&order_by={order_by}&order_direction={order_direction}");
-                let mut request = test::TestRequest::get().uri(path.as_str());
+                let mut request = test::TestRequest::get().uri(&path);
 
                 if let Some(token) = jwt {
                     request = request.append_header(("Authorization", format!("Bearer {}", token)));
@@ -1571,8 +1800,7 @@ mod integration_specs {
                 request.to_request()
             }
             UserTypes::DetailUserDTO(user, jwt) => {
-                let mut request =
-                    test::TestRequest::get().uri(format!("/user/{}", user.id).as_str());
+                let mut request = test::TestRequest::get().uri(&format!("/user/{}", user.id));
 
                 if let Some(token) = jwt {
                     request = request.append_header(("Authorization", format!("Bearer {}", token)));
@@ -1583,8 +1811,20 @@ mod integration_specs {
             UserTypes::DeleteUserDTO(password, user_id, jwt) => {
                 let id = user_id.clone().unwrap_or(String::from("123456"));
                 let mut request = test::TestRequest::delete()
-                    .uri(format!("/user/{}", id).as_str())
+                    .uri(&format!("/user/{}", id))
                     .set_json(password);
+
+                if let Some(token) = jwt {
+                    request = request.append_header(("Authorization", format!("Bearer {}", token)));
+                }
+
+                request.to_request()
+            }
+            UserTypes::PutUserDTO(body, user_id, jwt) => {
+                let id = user_id.clone().unwrap_or(String::from("123456"));
+                let mut request = test::TestRequest::put()
+                    .uri(&format!("/user/{}", id))
+                    .set_json(body);
 
                 if let Some(token) = jwt {
                     request = request.append_header(("Authorization", format!("Bearer {}", token)));
@@ -1756,6 +1996,8 @@ mod integration_specs {
         let bytes =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
 
+        assert!(bytes.contains("email"));
+        assert!(bytes.contains("conflict"));
         assert!(bytes.contains("Este e-mail já está sendo utilizado por outro usuário"));
 
         assert!(FunctionalTester::cant_see_in_database(TablesEnum::Salt, "salt", None).await);
@@ -2061,8 +2303,8 @@ mod integration_specs {
         assert!(bytes.contains("email/password"));
         assert!(bytes.contains("unauthorized"));
         assert!(bytes.contains("E-mail e/ou senha incorretos."));
-        assert!(bytes.contains(login_user.email.as_str()));
-        assert!(bytes.contains(login_user.password.as_str()));
+        assert!(bytes.contains(&login_user.email));
+        assert!(bytes.contains(&login_user.password));
 
         FunctionalTester::delete_from_database(
             TablesEnum::Salt,
@@ -2290,7 +2532,7 @@ mod integration_specs {
         dotenv::dotenv().ok();
 
         let total_users = 5;
-        let mut users: Vec<UserDTO> = Vec::with_capacity(total_users);
+        let mut users: Vec<MockUserDTO> = Vec::with_capacity(total_users);
 
         for i in 0..total_users as usize {
             let mut user = UserModels::complete_user_model_hashed();
@@ -2332,7 +2574,7 @@ mod integration_specs {
         dotenv::dotenv().ok();
 
         let total_users = 5;
-        let mut users: Vec<UserDTO> = Vec::with_capacity(total_users);
+        let mut users: Vec<MockUserDTO> = Vec::with_capacity(total_users);
 
         for i in 0..total_users {
             let mut user = UserModels::complete_user_model_hashed();
@@ -2382,7 +2624,7 @@ mod integration_specs {
         dotenv::dotenv().ok();
 
         let total_users = 5;
-        let mut users: Vec<UserDTO> = Vec::with_capacity(total_users);
+        let mut users: Vec<MockUserDTO> = Vec::with_capacity(total_users);
 
         for i in 0..total_users as usize {
             let mut user = UserModels::complete_user_model_hashed();
@@ -2432,7 +2674,7 @@ mod integration_specs {
         dotenv::dotenv().ok();
 
         let total_users = 5;
-        let mut users: Vec<UserDTO> = Vec::with_capacity(total_users);
+        let mut users: Vec<MockUserDTO> = Vec::with_capacity(total_users);
 
         for i in 0..total_users as usize {
             let mut user = UserModels::complete_user_model_hashed();
@@ -2455,7 +2697,7 @@ mod integration_specs {
         let bytes: String =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
 
-        let bytes_serde: ListUserControllerResponse = serde_json::from_str(&bytes).unwrap();
+        let bytes_serde: Vec<MockDetailUserDTO> = serde_json::from_str(&bytes).unwrap();
 
         for i in 0..total_users as usize {
             assert!(bytes.contains(&users[i].id));
@@ -2463,7 +2705,7 @@ mod integration_specs {
             assert!(bytes.contains(&users[i].email));
             assert!(bytes.contains(&users[i].created_at.chars().take(10).collect::<String>()));
             if i != 4 {
-                assert!(bytes_serde.users[i].created_at > bytes_serde.users[i + 1].created_at);
+                assert!(bytes_serde[i].created_at > bytes_serde[i + 1].created_at);
             }
             FunctionalTester::delete_from_database(
                 TablesEnum::Users,
@@ -2478,7 +2720,7 @@ mod integration_specs {
         dotenv::dotenv().ok();
 
         let total_users = 5;
-        let mut users: Vec<UserDTO> = Vec::with_capacity(total_users);
+        let mut users: Vec<MockUserDTO> = Vec::with_capacity(total_users);
 
         for i in 0..total_users as usize {
             let mut user = UserModels::complete_user_model_hashed();
@@ -2501,7 +2743,7 @@ mod integration_specs {
         let bytes: String =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
 
-        let bytes_serde: ListUserControllerResponse = serde_json::from_str(&bytes).unwrap();
+        let bytes_serde: Vec<MockDetailUserDTO> = serde_json::from_str(&bytes).unwrap();
 
         for i in 0..total_users as usize {
             assert!(bytes.contains(&users[i].id));
@@ -2509,7 +2751,7 @@ mod integration_specs {
             assert!(bytes.contains(&users[i].email));
             assert!(bytes.contains(&users[i].created_at.chars().take(10).collect::<String>()));
             if i != 4 {
-                assert!(bytes_serde.users[i].created_at < bytes_serde.users[i + 1].created_at);
+                assert!(bytes_serde[i].created_at < bytes_serde[i + 1].created_at);
             }
             FunctionalTester::delete_from_database(
                 TablesEnum::Users,
@@ -2626,7 +2868,7 @@ mod integration_specs {
         FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
 
         let jwt = JwtModels::access_jwt_model(user.id.clone());
-        let delete_user_dto = DeleteUserDTO {
+        let delete_user_dto = MockDeleteUserDTO {
             password: UserModels::complete_user_model().password,
         };
         let resp = user_call_http_before(
@@ -2635,12 +2877,14 @@ mod integration_specs {
         )
         .await;
 
-        assert_eq!(resp.status(), 200);
+        assert_eq!(resp.status(), 202);
 
         let bytes =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
 
         assert_eq!(bytes, Bytes::from_static(b""));
+
+        sleep(Duration::from_secs(2)).await;
 
         assert!(
             FunctionalTester::cant_see_in_database(
@@ -2671,7 +2915,7 @@ mod integration_specs {
         FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
 
         let jwt = JwtModels::access_jwt_model(user.id.clone());
-        let delete_user_dto = DeleteUserDTO {
+        let delete_user_dto = MockDeleteUserDTO {
             password: String::from("12345678"),
         };
         let resp = user_call_http_before(
@@ -2723,7 +2967,7 @@ mod integration_specs {
         FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
 
         let jwt = JwtModels::access_jwt_model(user.id.clone());
-        let delete_user_dto = DeleteUserDTO {
+        let delete_user_dto = MockDeleteUserDTO {
             password: String::from("1234567"),
         };
         let resp = user_call_http_before(
@@ -2770,7 +3014,7 @@ mod integration_specs {
 
         let user = UserModels::complete_user_model_hashed();
 
-        let delete_user_dto = DeleteUserDTO {
+        let delete_user_dto = MockDeleteUserDTO {
             password: UserModels::complete_user_model().password,
         };
 
@@ -2796,7 +3040,7 @@ mod integration_specs {
 
         let user = UserModels::complete_user_model_hashed();
 
-        let delete_user_dto = DeleteUserDTO {
+        let delete_user_dto = MockDeleteUserDTO {
             password: UserModels::complete_user_model().password,
         };
 
@@ -2821,7 +3065,7 @@ mod integration_specs {
         let user = UserModels::complete_user_model_hashed();
 
         let jwt = JwtModels::access_jwt_model(user.id.clone());
-        let delete_user_dto = DeleteUserDTO {
+        let delete_user_dto = MockDeleteUserDTO {
             password: UserModels::complete_user_model().password,
         };
         let resp = user_call_http_before(
@@ -2853,7 +3097,7 @@ mod integration_specs {
         let jwt = JwtModels::access_jwt_model(user.id.clone());
 
         let error_password = String::from("123456789%");
-        let delete_user_dto = DeleteUserDTO {
+        let delete_user_dto = MockDeleteUserDTO {
             password: error_password.clone(),
         };
 
@@ -2871,7 +3115,7 @@ mod integration_specs {
         assert!(bytes.contains("password"));
         assert!(bytes.contains("unauthorized"));
         assert!(bytes.contains("Senha incorreta."));
-        assert!(bytes.contains(error_password.as_str()));
+        assert!(bytes.contains(&error_password));
 
         assert!(
             FunctionalTester::can_see_in_database(
@@ -2909,7 +3153,7 @@ mod integration_specs {
         FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
 
         let jwt = JwtModels::access_jwt_model(user.id.clone());
-        let delete_user_dto = DeleteUserDTO {
+        let delete_user_dto = MockDeleteUserDTO {
             password: UserModels::complete_user_model().password,
         };
         let resp = user_call_http_before(
@@ -2939,6 +3183,862 @@ mod integration_specs {
                 TablesEnum::Users,
                 "email",
                 Some(vec![("email", &user.email)]),
+            )
+            .await
+        );
+
+        FunctionalTester::delete_from_database(TablesEnum::Salt, Some(vec![("salt", &salt)])).await;
+        FunctionalTester::delete_from_database(
+            TablesEnum::Users,
+            Some(vec![("email", &user.email)]),
+        )
+        .await;
+    }
+
+    #[test]
+    async fn _put_user() {
+        dotenv::dotenv().ok();
+
+        let salt = uuid::Uuid::new_v4().to_string();
+        let mut user = UserModels::complete_user_model_hashed();
+        user.password = format!("{}{}", user.password, salt);
+        FunctionalTester::insert_in_db_users(user.clone()).await;
+        FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
+
+        let new_email = String::from("bush1d3v2@gmail.com");
+        let new_password = String::from("123456789%");
+
+        let jwt = JwtModels::access_jwt_model(user.id.clone());
+        let put_user_dto = MockPutUserDTO {
+            password: UserModels::complete_user_model().password,
+            email: UserModels::complete_user_model_hashed().email,
+            new_password,
+            new_email: new_email.clone(),
+        };
+        let resp = user_call_http_before(
+            UserTypes::PutUserDTO(put_user_dto, Some(user.id.clone()), Some(jwt)),
+            false,
+        )
+        .await;
+
+        assert_eq!(resp.status(), 202);
+
+        let bytes =
+            String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
+
+        assert_eq!(bytes, Bytes::from_static(b""));
+
+        sleep(Duration::from_secs(2)).await;
+
+        assert!(
+            FunctionalTester::can_see_in_database(
+                TablesEnum::Users,
+                "email",
+                Some(vec![("email", &new_email.clone())]),
+            )
+            .await
+        );
+
+        FunctionalTester::delete_from_database(TablesEnum::Salt, Some(vec![("salt", &salt)])).await;
+        FunctionalTester::delete_from_database(
+            TablesEnum::Users,
+            Some(vec![("email", &new_email)]),
+        )
+        .await;
+    }
+
+    #[test]
+    async fn _put_user_error_password_length() {
+        dotenv::dotenv().ok();
+
+        let salt = uuid::Uuid::new_v4().to_string();
+        let mut user = UserModels::complete_user_model_hashed();
+        user.password = format!("{}{}", user.password, salt);
+        FunctionalTester::insert_in_db_users(user.clone()).await;
+        FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
+
+        let new_email = String::from("bush1d3v2@gmail.com");
+        let new_password = String::from("123456789%");
+
+        let jwt = JwtModels::access_jwt_model(user.id.clone());
+        let put_user_dto = MockPutUserDTO {
+            password: String::from(""),
+            email: UserModels::complete_user_model_hashed().email,
+            new_password,
+            new_email: new_email.clone(),
+        };
+        let resp = user_call_http_before(
+            UserTypes::PutUserDTO(put_user_dto, Some(user.id.clone()), Some(jwt)),
+            false,
+        )
+        .await;
+
+        assert_eq!(resp.status(), 400);
+
+        let bytes =
+            String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
+
+        assert!(bytes.contains("A senha deve ter pelo menos 8 caracteres."));
+
+        assert!(
+            FunctionalTester::cant_see_in_database(
+                TablesEnum::Users,
+                "email",
+                Some(vec![("email", &new_email)]),
+            )
+            .await
+        );
+
+        FunctionalTester::delete_from_database(TablesEnum::Salt, Some(vec![("salt", &salt)])).await;
+        FunctionalTester::delete_from_database(
+            TablesEnum::Users,
+            Some(vec![("email", &user.email)]),
+        )
+        .await;
+    }
+
+    #[test]
+    async fn _put_user_error_password_regex() {
+        dotenv::dotenv().ok();
+
+        let salt = uuid::Uuid::new_v4().to_string();
+        let mut user = UserModels::complete_user_model_hashed();
+        user.password = format!("{}{}", user.password, salt);
+        FunctionalTester::insert_in_db_users(user.clone()).await;
+        FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
+
+        let new_email = String::from("bush1d3v2@gmail.com");
+        let new_password = String::from("123456789%");
+
+        let jwt = JwtModels::access_jwt_model(user.id.clone());
+        let put_user_dto = MockPutUserDTO {
+            password: String::from("12345678"),
+            email: UserModels::complete_user_model_hashed().email,
+            new_password,
+            new_email: new_email.clone(),
+        };
+        let resp = user_call_http_before(
+            UserTypes::PutUserDTO(put_user_dto, Some(user.id.clone()), Some(jwt)),
+            false,
+        )
+        .await;
+
+        assert_eq!(resp.status(), 400);
+
+        let bytes =
+            String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
+
+        assert!(bytes.contains("A senha deve ter pelo menos 1 caractere especial."));
+
+        assert!(
+            FunctionalTester::cant_see_in_database(
+                TablesEnum::Users,
+                "email",
+                Some(vec![("email", &new_email)]),
+            )
+            .await
+        );
+
+        FunctionalTester::delete_from_database(TablesEnum::Salt, Some(vec![("salt", &salt)])).await;
+        FunctionalTester::delete_from_database(
+            TablesEnum::Users,
+            Some(vec![("email", &user.email)]),
+        )
+        .await;
+    }
+
+    #[test]
+    async fn _put_user_error_email_length() {
+        dotenv::dotenv().ok();
+
+        let salt = uuid::Uuid::new_v4().to_string();
+        let mut user = UserModels::complete_user_model_hashed();
+        user.password = format!("{}{}", user.password, salt);
+        FunctionalTester::insert_in_db_users(user.clone()).await;
+        FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
+
+        let new_email = String::from("bush1d3v2@gmail.com");
+        let new_password = String::from("123456789%");
+
+        let jwt = JwtModels::access_jwt_model(user.id.clone());
+        let put_user_dto = MockPutUserDTO {
+            password: UserModels::complete_user_model_hashed().password,
+            email: String::from(""),
+            new_password,
+            new_email: new_email.clone(),
+        };
+        let resp = user_call_http_before(
+            UserTypes::PutUserDTO(put_user_dto, Some(user.id.clone()), Some(jwt)),
+            false,
+        )
+        .await;
+
+        assert_eq!(resp.status(), 400);
+
+        let bytes =
+            String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
+
+        assert!(bytes.contains("O e-mail deve ter entre 10 e 127 caracteres."));
+
+        assert!(
+            FunctionalTester::cant_see_in_database(
+                TablesEnum::Users,
+                "email",
+                Some(vec![("email", &new_email)]),
+            )
+            .await
+        );
+
+        FunctionalTester::delete_from_database(TablesEnum::Salt, Some(vec![("salt", &salt)])).await;
+        FunctionalTester::delete_from_database(
+            TablesEnum::Users,
+            Some(vec![("email", &user.email)]),
+        )
+        .await;
+    }
+
+    #[test]
+    async fn _put_user_error_email_regex() {
+        dotenv::dotenv().ok();
+
+        let salt = uuid::Uuid::new_v4().to_string();
+        let mut user = UserModels::complete_user_model_hashed();
+        user.password = format!("{}{}", user.password, salt);
+        FunctionalTester::insert_in_db_users(user.clone()).await;
+        FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
+
+        let new_email = String::from("bush1d3v2@gmail.com");
+        let new_password = String::from("123456789%");
+
+        let jwt = JwtModels::access_jwt_model(user.id.clone());
+        let put_user_dto = MockPutUserDTO {
+            password: UserModels::complete_user_model_hashed().password,
+            email: String::from("teste@gmailcom"),
+            new_password,
+            new_email: new_email.clone(),
+        };
+        let resp = user_call_http_before(
+            UserTypes::PutUserDTO(put_user_dto, Some(user.id.clone()), Some(jwt)),
+            false,
+        )
+        .await;
+
+        assert_eq!(resp.status(), 400);
+
+        let bytes =
+            String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
+
+        assert!(bytes.contains("O e-mail deve ser um endereço válido."));
+
+        assert!(
+            FunctionalTester::cant_see_in_database(
+                TablesEnum::Users,
+                "email",
+                Some(vec![("email", &new_email)]),
+            )
+            .await
+        );
+
+        FunctionalTester::delete_from_database(TablesEnum::Salt, Some(vec![("salt", &salt)])).await;
+        FunctionalTester::delete_from_database(
+            TablesEnum::Users,
+            Some(vec![("email", &user.email)]),
+        )
+        .await;
+    }
+
+    #[test]
+    async fn _put_user_error_new_password_length() {
+        dotenv::dotenv().ok();
+
+        let salt = uuid::Uuid::new_v4().to_string();
+        let mut user = UserModels::complete_user_model_hashed();
+        user.password = format!("{}{}", user.password, salt);
+        FunctionalTester::insert_in_db_users(user.clone()).await;
+        FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
+
+        let new_email = String::from("bush1d3v2@gmail.com");
+
+        let jwt = JwtModels::access_jwt_model(user.id.clone());
+        let put_user_dto = MockPutUserDTO {
+            password: UserModels::complete_user_model().password,
+            email: UserModels::complete_user_model_hashed().email,
+            new_password: String::from(""),
+            new_email: new_email.clone(),
+        };
+        let resp = user_call_http_before(
+            UserTypes::PutUserDTO(put_user_dto, Some(user.id.clone()), Some(jwt)),
+            false,
+        )
+        .await;
+
+        assert_eq!(resp.status(), 400);
+
+        let bytes =
+            String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
+
+        assert!(bytes.contains("A senha deve ter pelo menos 8 caracteres."));
+
+        assert!(
+            FunctionalTester::cant_see_in_database(
+                TablesEnum::Users,
+                "email",
+                Some(vec![("email", &new_email)]),
+            )
+            .await
+        );
+
+        FunctionalTester::delete_from_database(TablesEnum::Salt, Some(vec![("salt", &salt)])).await;
+        FunctionalTester::delete_from_database(
+            TablesEnum::Users,
+            Some(vec![("email", &user.email)]),
+        )
+        .await;
+    }
+
+    #[test]
+    async fn _put_user_error_new_password_regex() {
+        dotenv::dotenv().ok();
+
+        let salt = uuid::Uuid::new_v4().to_string();
+        let mut user = UserModels::complete_user_model_hashed();
+        user.password = format!("{}{}", user.password, salt);
+        FunctionalTester::insert_in_db_users(user.clone()).await;
+        FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
+
+        let new_email = String::from("bush1d3v2@gmail.com");
+
+        let jwt = JwtModels::access_jwt_model(user.id.clone());
+        let put_user_dto = MockPutUserDTO {
+            password: UserModels::complete_user_model().password,
+            email: UserModels::complete_user_model_hashed().email,
+            new_password: String::from("12345678"),
+            new_email: new_email.clone(),
+        };
+        let resp = user_call_http_before(
+            UserTypes::PutUserDTO(put_user_dto, Some(user.id.clone()), Some(jwt)),
+            false,
+        )
+        .await;
+
+        assert_eq!(resp.status(), 400);
+
+        let bytes =
+            String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
+
+        assert!(bytes.contains("A senha deve ter pelo menos 1 caractere especial."));
+
+        assert!(
+            FunctionalTester::cant_see_in_database(
+                TablesEnum::Users,
+                "email",
+                Some(vec![("email", &new_email)]),
+            )
+            .await
+        );
+
+        FunctionalTester::delete_from_database(TablesEnum::Salt, Some(vec![("salt", &salt)])).await;
+        FunctionalTester::delete_from_database(
+            TablesEnum::Users,
+            Some(vec![("email", &user.email)]),
+        )
+        .await;
+    }
+
+    #[test]
+    async fn _put_user_error_new_email_length() {
+        dotenv::dotenv().ok();
+
+        let salt = uuid::Uuid::new_v4().to_string();
+        let mut user = UserModels::complete_user_model_hashed();
+        user.password = format!("{}{}", user.password, salt);
+        FunctionalTester::insert_in_db_users(user.clone()).await;
+        FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
+
+        let new_email = String::from("bush1d3v2");
+        let new_password: String = String::from("123456789%");
+
+        let jwt = JwtModels::access_jwt_model(user.id.clone());
+        let put_user_dto = MockPutUserDTO {
+            password: UserModels::complete_user_model_hashed().password,
+            email: String::from(""),
+            new_password,
+            new_email: new_email.clone(),
+        };
+        let resp = user_call_http_before(
+            UserTypes::PutUserDTO(put_user_dto, Some(user.id.clone()), Some(jwt)),
+            false,
+        )
+        .await;
+
+        assert_eq!(resp.status(), 400);
+
+        let bytes =
+            String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
+
+        assert!(bytes.contains("O e-mail deve ter entre 10 e 127 caracteres."));
+
+        assert!(
+            FunctionalTester::cant_see_in_database(
+                TablesEnum::Users,
+                "email",
+                Some(vec![("email", &new_email)]),
+            )
+            .await
+        );
+
+        FunctionalTester::delete_from_database(TablesEnum::Salt, Some(vec![("salt", &salt)])).await;
+        FunctionalTester::delete_from_database(
+            TablesEnum::Users,
+            Some(vec![("email", &user.email)]),
+        )
+        .await;
+    }
+
+    #[test]
+    async fn _put_user_error_new_email_regex() {
+        dotenv::dotenv().ok();
+
+        let salt = uuid::Uuid::new_v4().to_string();
+        let mut user = UserModels::complete_user_model_hashed();
+        user.password = format!("{}{}", user.password, salt);
+        FunctionalTester::insert_in_db_users(user.clone()).await;
+        FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
+
+        let new_email = String::from("bush1d3v2@gmailcom");
+        let new_password = String::from("123456789%");
+
+        let jwt = JwtModels::access_jwt_model(user.id.clone());
+        let put_user_dto = MockPutUserDTO {
+            password: UserModels::complete_user_model_hashed().password,
+            email: String::from("teste@gmailcom"),
+            new_password,
+            new_email: new_email.clone(),
+        };
+        let resp = user_call_http_before(
+            UserTypes::PutUserDTO(put_user_dto, Some(user.id.clone()), Some(jwt)),
+            false,
+        )
+        .await;
+
+        assert_eq!(resp.status(), 400);
+
+        let bytes =
+            String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
+
+        assert!(bytes.contains("O e-mail deve ser um endereço válido."));
+
+        assert!(
+            FunctionalTester::cant_see_in_database(
+                TablesEnum::Users,
+                "email",
+                Some(vec![("email", &new_email)]),
+            )
+            .await
+        );
+
+        FunctionalTester::delete_from_database(TablesEnum::Salt, Some(vec![("salt", &salt)])).await;
+        FunctionalTester::delete_from_database(
+            TablesEnum::Users,
+            Some(vec![("email", &user.email)]),
+        )
+        .await;
+    }
+
+    #[test]
+    async fn _put_user_error_jwt_unauthorized() {
+        dotenv::dotenv().ok();
+
+        let salt = uuid::Uuid::new_v4().to_string();
+        let mut user = UserModels::complete_user_model_hashed();
+        user.password = format!("{}{}", user.password, salt);
+        FunctionalTester::insert_in_db_users(user.clone()).await;
+        FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
+
+        let new_email = String::from("bush1d3v2@gmail.com");
+        let new_password = String::from("123456789%");
+
+        let jwt = JwtModels::refresh_jwt_model(user.id.clone());
+        let put_user_dto = MockPutUserDTO {
+            password: UserModels::complete_user_model().password,
+            email: UserModels::complete_user_model_hashed().email,
+            new_password,
+            new_email: new_email.clone(),
+        };
+        let resp = user_call_http_before(
+            UserTypes::PutUserDTO(put_user_dto, Some(user.id.clone()), Some(jwt)),
+            false,
+        )
+        .await;
+
+        assert_eq!(resp.status(), 401);
+
+        let bytes =
+            String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
+
+        assert!(bytes.contains("unauthorized"));
+        assert!(bytes.contains("bearer token"));
+
+        assert!(
+            FunctionalTester::cant_see_in_database(
+                TablesEnum::Users,
+                "email",
+                Some(vec![("email", &new_email.clone())]),
+            )
+            .await
+        );
+
+        FunctionalTester::delete_from_database(TablesEnum::Salt, Some(vec![("salt", &salt)])).await;
+        FunctionalTester::delete_from_database(
+            TablesEnum::Users,
+            Some(vec![("email", &user.email)]),
+        )
+        .await;
+    }
+
+    #[test]
+    async fn _put_user_error_jwt_authorization_not_found() {
+        dotenv::dotenv().ok();
+
+        let salt = uuid::Uuid::new_v4().to_string();
+        let mut user = UserModels::complete_user_model_hashed();
+        user.password = format!("{}{}", user.password, salt);
+        FunctionalTester::insert_in_db_users(user.clone()).await;
+        FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
+
+        let new_email = String::from("bush1d3v2@gmail.com");
+        let new_password = String::from("123456789%");
+
+        let put_user_dto = MockPutUserDTO {
+            password: UserModels::complete_user_model().password,
+            email: UserModels::complete_user_model_hashed().email,
+            new_password,
+            new_email: new_email.clone(),
+        };
+        let resp = user_call_http_before(
+            UserTypes::PutUserDTO(put_user_dto, Some(user.id.clone()), None),
+            false,
+        )
+        .await;
+
+        assert_eq!(resp.status(), 400);
+
+        let bytes =
+            String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
+
+        assert!(bytes.contains("bad request"));
+        assert!(bytes.contains("O valor do cabeçalho 'Authorization' deve ser informado."));
+
+        assert!(
+            FunctionalTester::cant_see_in_database(
+                TablesEnum::Users,
+                "email",
+                Some(vec![("email", &new_email.clone())]),
+            )
+            .await
+        );
+
+        FunctionalTester::delete_from_database(TablesEnum::Salt, Some(vec![("salt", &salt)])).await;
+        FunctionalTester::delete_from_database(
+            TablesEnum::Users,
+            Some(vec![("email", &user.email)]),
+        )
+        .await;
+    }
+
+    #[test]
+    async fn _put_user_error_not_found() {
+        dotenv::dotenv().ok();
+
+        let salt = uuid::Uuid::new_v4().to_string();
+        let user = UserModels::complete_user_model_hashed();
+
+        let new_email = String::from("bush1d3v2@gmail.com");
+        let new_password = String::from("123456789%");
+
+        let jwt = JwtModels::access_jwt_model(user.id.clone());
+        let put_user_dto = MockPutUserDTO {
+            password: UserModels::complete_user_model().password,
+            email: UserModels::complete_user_model_hashed().email,
+            new_password,
+            new_email: new_email.clone(),
+        };
+        let resp = user_call_http_before(
+            UserTypes::PutUserDTO(put_user_dto, Some(user.id), Some(jwt)),
+            false,
+        )
+        .await;
+
+        assert_eq!(resp.status(), 404);
+
+        let bytes =
+            String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
+
+        assert!(bytes.contains("user"));
+        assert!(bytes.contains("not found"));
+        assert!(bytes.contains("Não foi encontrado um usuário com este id."));
+
+        assert!(
+            FunctionalTester::cant_see_in_database(
+                TablesEnum::Users,
+                "email",
+                Some(vec![("email", &new_email.clone())]),
+            )
+            .await
+        );
+
+        FunctionalTester::delete_from_database(TablesEnum::Salt, Some(vec![("salt", &salt)])).await;
+        FunctionalTester::delete_from_database(
+            TablesEnum::Users,
+            Some(vec![("email", &user.email)]),
+        )
+        .await;
+    }
+
+    #[test]
+    async fn _put_user_error_unauthorized() {
+        dotenv::dotenv().ok();
+
+        let salt = uuid::Uuid::new_v4().to_string();
+        let mut user = UserModels::complete_user_model_hashed();
+        user.password = format!("{}{}", user.password, salt);
+        FunctionalTester::insert_in_db_users(user.clone()).await;
+        FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
+
+        let new_email = String::from("bush1d3v2@gmail.com");
+        let new_password = String::from("123456789%");
+
+        let jwt = JwtModels::access_jwt_model(user.id.clone());
+        let put_user_dto = MockPutUserDTO {
+            password: new_password.clone(),
+            email: UserModels::complete_user_model_hashed().email,
+            new_password,
+            new_email: new_email.clone(),
+        };
+        let resp = user_call_http_before(
+            UserTypes::PutUserDTO(put_user_dto, Some(user.id.clone()), Some(jwt)),
+            false,
+        )
+        .await;
+
+        assert_eq!(resp.status(), 401);
+
+        let bytes =
+            String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
+
+        assert!(bytes.contains("password"));
+        assert!(bytes.contains("unauthorized"));
+        assert!(bytes.contains("Senha incorreta."));
+
+        assert!(
+            FunctionalTester::cant_see_in_database(
+                TablesEnum::Users,
+                "email",
+                Some(vec![("email", &new_email.clone())]),
+            )
+            .await
+        );
+
+        FunctionalTester::delete_from_database(TablesEnum::Salt, Some(vec![("salt", &salt)])).await;
+        FunctionalTester::delete_from_database(
+            TablesEnum::Users,
+            Some(vec![("email", &user.email)]),
+        )
+        .await;
+    }
+
+    #[test]
+    async fn _put_user_error_forbidden() {
+        dotenv::dotenv().ok();
+
+        let salt = uuid::Uuid::new_v4().to_string();
+        let mut user = UserModels::complete_user_model_hashed();
+        user.password = format!("{}{}", user.password, salt);
+        FunctionalTester::insert_in_db_users(user.clone()).await;
+        FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
+
+        let new_email = String::from("bush1d3v2@gmail.com");
+        let new_password = String::from("123456789%");
+
+        let jwt = JwtModels::access_jwt_model(user.id.clone());
+        let put_user_dto = MockPutUserDTO {
+            password: new_password.clone(),
+            email: String::from("bush1d3v2@gmail.com"),
+            new_password,
+            new_email: new_email.clone(),
+        };
+        let resp = user_call_http_before(
+            UserTypes::PutUserDTO(put_user_dto, Some(user.id.clone()), Some(jwt)),
+            false,
+        )
+        .await;
+
+        assert_eq!(resp.status(), 403);
+
+        let bytes =
+            String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
+
+        assert!(bytes.contains("user"));
+        assert!(bytes.contains("forbidden"));
+        assert!(bytes.contains("Você não tem permissão para alterar informações associadas a um e-mail que não está vinculado ao seu ID de usuário."));
+
+        assert!(
+            FunctionalTester::cant_see_in_database(
+                TablesEnum::Users,
+                "email",
+                Some(vec![("email", &new_email.clone())]),
+            )
+            .await
+        );
+
+        FunctionalTester::delete_from_database(TablesEnum::Salt, Some(vec![("salt", &salt)])).await;
+        FunctionalTester::delete_from_database(
+            TablesEnum::Users,
+            Some(vec![("email", &user.email)]),
+        )
+        .await;
+    }
+
+    #[test]
+    async fn _put_user_error_conflict() {
+        dotenv::dotenv().ok();
+
+        let salt = uuid::Uuid::new_v4().to_string();
+        let mut user = UserModels::complete_user_model_hashed();
+        user.password = format!("{}{}", user.password, salt);
+        FunctionalTester::insert_in_db_users(user.clone()).await;
+        FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
+
+        let new_email = user.email.clone();
+        let new_password = String::from("123456789%");
+
+        let jwt = JwtModels::access_jwt_model(user.id.clone());
+        let put_user_dto = MockPutUserDTO {
+            password: UserModels::complete_user_model().password,
+            email: UserModels::complete_user_model_hashed().email,
+            new_password,
+            new_email: new_email.clone(),
+        };
+        let resp = user_call_http_before(
+            UserTypes::PutUserDTO(put_user_dto, Some(user.id.clone()), Some(jwt)),
+            false,
+        )
+        .await;
+
+        assert_eq!(resp.status(), 409);
+
+        let bytes =
+            String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
+
+        assert!(bytes.contains("email"));
+        assert!(bytes.contains("conflict"));
+        assert!(bytes.contains("Este e-mail já está sendo utilizado por outro usuário"));
+
+        assert!(
+            FunctionalTester::can_see_in_database(
+                TablesEnum::Users,
+                "email",
+                Some(vec![("email", &user.email.clone())]),
+            )
+            .await
+        );
+
+        FunctionalTester::delete_from_database(TablesEnum::Salt, Some(vec![("salt", &salt)])).await;
+        FunctionalTester::delete_from_database(
+            TablesEnum::Users,
+            Some(vec![("email", &user.email)]),
+        )
+        .await;
+    }
+
+    #[test]
+    async fn _put_user_error_uuid_path_type_value() {
+        dotenv::dotenv().ok();
+
+        let salt = uuid::Uuid::new_v4().to_string();
+        let mut user = UserModels::complete_user_model_hashed();
+        user.password = format!("{}{}", user.password, salt);
+        FunctionalTester::insert_in_db_users(user.clone()).await;
+        FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
+
+        let new_email = String::from("bush1d3v2@gmail.com");
+        let new_password = String::from("123456789%");
+
+        let jwt = JwtModels::access_jwt_model(user.id.clone());
+        let put_user_dto = MockPutUserDTO {
+            password: UserModels::complete_user_model().password,
+            email: UserModels::complete_user_model_hashed().email,
+            new_password,
+            new_email: new_email.clone(),
+        };
+        let resp =
+            user_call_http_before(UserTypes::PutUserDTO(put_user_dto, None, Some(jwt)), false)
+                .await;
+
+        assert_eq!(resp.status(), 400);
+
+        let bytes =
+            String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
+
+        assert!(bytes.contains("Por favor, envie um valor de UUID válido na URL da requisição."));
+        assert!(bytes.contains("bad request"));
+
+        assert!(
+            FunctionalTester::cant_see_in_database(
+                TablesEnum::Users,
+                "email",
+                Some(vec![("email", &new_email.clone())]),
+            )
+            .await
+        );
+
+        FunctionalTester::delete_from_database(TablesEnum::Salt, Some(vec![("salt", &salt)])).await;
+        FunctionalTester::delete_from_database(
+            TablesEnum::Users,
+            Some(vec![("email", &user.email)]),
+        )
+        .await;
+    }
+
+    #[test]
+    async fn _put_user_error_service_unavailable() {
+        dotenv::dotenv().ok();
+
+        let salt = uuid::Uuid::new_v4().to_string();
+        let mut user = UserModels::complete_user_model_hashed();
+        user.password = format!("{}{}", user.password, salt);
+        FunctionalTester::insert_in_db_users(user.clone()).await;
+        FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
+
+        let new_email = String::from("bush1d3v2@gmail.com");
+        let new_password = String::from("123456789%");
+
+        let jwt = JwtModels::access_jwt_model(user.id.clone());
+        let put_user_dto = MockPutUserDTO {
+            password: UserModels::complete_user_model().password,
+            email: UserModels::complete_user_model_hashed().email,
+            new_password,
+            new_email: new_email.clone(),
+        };
+        let resp = user_call_http_before(
+            UserTypes::PutUserDTO(put_user_dto, Some(user.id.clone()), Some(jwt)),
+            true,
+        )
+        .await;
+
+        assert_eq!(resp.status(), 503);
+
+        let bytes =
+            String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
+
+        assert!(bytes.contains("database"));
+        assert!(bytes.contains("service unavailable"));
+
+        assert!(
+            FunctionalTester::cant_see_in_database(
+                TablesEnum::Users,
+                "email",
+                Some(vec![("email", &new_email.clone())]),
             )
             .await
         );
