@@ -1,8 +1,8 @@
 use super::{
     enums::db_table::TablesEnum,
     models::{postgres::PostgresModels, redis::RedisModels, user::UserModels},
+    structs::user::MockUserDTO,
 };
-use navarro_blog_api::modules::user::user_dtos::UserDTO;
 use sql_builder::{quote, SqlBuilder};
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -82,7 +82,7 @@ impl FunctionalTester {
         }
 
         let sql = sql_builder.sql().unwrap();
-        let rows = transaction.query(sql.as_str(), &[]).await.unwrap();
+        let rows = transaction.query(&sql, &[]).await.unwrap();
         transaction.commit().await.unwrap();
 
         !rows.is_empty()
@@ -107,7 +107,7 @@ impl FunctionalTester {
         }
 
         let sql = sql_builder.sql().unwrap();
-        let rows = transaction.query(sql.as_str(), &[]).await.unwrap();
+        let rows = transaction.query(&sql, &[]).await.unwrap();
         transaction.commit().await.unwrap();
 
         rows.is_empty()
@@ -147,7 +147,7 @@ impl FunctionalTester {
         }
 
         let sql = sql_builder.sql().unwrap();
-        let rows = transaction.query(sql.as_str(), &[]).await.unwrap();
+        let rows = transaction.query(&sql, &[]).await.unwrap();
         transaction.commit().await.unwrap();
 
         let salt: uuid::Uuid = rows[0].get("salt");
@@ -159,13 +159,14 @@ impl FunctionalTester {
         }
     }
 
-    pub async fn insert_in_db_users(user_body: UserDTO) -> UserDTO {
-        let mut pg_user = UserDTO {
+    pub async fn insert_in_db_users(user_body: MockUserDTO) -> MockUserDTO {
+        let mut pg_user = MockUserDTO {
             id: user_body.id.clone(),
             name: user_body.name.clone(),
             email: user_body.email.clone(),
             password: user_body.password.clone(),
             created_at: user_body.created_at.clone(),
+            updated_at: user_body.updated_at.clone(),
         };
 
         if user_body.id == *"" {
