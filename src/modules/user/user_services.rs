@@ -135,18 +135,17 @@ pub async fn delete_user_service(
     user_id: String,
     string_user: Option<String>,
 ) -> Result<String, HttpResponse> {
-    let db_user: UserDTO;
-    if string_user == None {
-        db_user = match detail_user_repository(pg_pool.clone(), user_id.clone()).await {
+    let db_user: UserDTO = if string_user.is_none() {
+        match detail_user_repository(pg_pool.clone(), user_id.clone()).await {
             Ok(user_dto) => user_dto,
             Err(e) => return Err(e),
-        };
+        }
     } else {
-        db_user = match UserSerdes::serde_string_to_json(&string_user.unwrap()) {
+        match UserSerdes::serde_string_to_json(&string_user.unwrap()) {
             Ok(user_dto) => user_dto,
             Err(e) => return Err(e),
-        };
-    }
+        }
+    };
 
     match password_verifier(
         pg_pool,

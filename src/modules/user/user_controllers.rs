@@ -276,8 +276,8 @@ async fn login_user_response_constructor(
     string_user: &str,
     email: &str,
 ) -> HttpResponse<BoxBody> {
-    let _ = Redis::set(&redis_pool, &service_resp.user.id, &string_user).await;
-    let _ = Redis::set(&redis_pool, email, string_user).await;
+    let _ = Redis::set(redis_pool, &service_resp.user.id, string_user).await;
+    let _ = Redis::set(redis_pool, email, string_user).await;
     HttpResponse::Ok().json(LoginUserControllerResponse {
         access_token: service_resp.access_token,
         access_expires_in: service_resp.access_expires_in,
