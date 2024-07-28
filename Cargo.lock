@@ -1487,9 +1487,9 @@ checksum = "d231b230927b5e4ad203db57bbcbee2802f6bce620b1e4a9024a07d94e2907ec"
 
 [[package]]
 name = "postgres"
-version = "0.19.7"
+version = "0.19.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7915b33ed60abc46040cbcaa25ffa1c7ec240668e0477c4f3070786f5916d451"
+checksum = "6c9ec84ab55b0f9e418675de50052d494ba893fd28c65769a6e68fcdacbee2b8"
 dependencies = [
  "bytes",
  "fallible-iterator",
