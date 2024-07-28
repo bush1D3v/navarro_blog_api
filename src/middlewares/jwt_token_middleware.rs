@@ -68,8 +68,5 @@ pub fn jwt_token_middleware(headers: &HeaderMap) -> Result<TokenData<Claims>, Ht
         }
     };
 
-    match Jwt::access_token_decode(token) {
-        Ok(token) => Ok(token),
-        Err(e) => Err(e),
-    }
+    Jwt::access_token_decode(token)
 }
