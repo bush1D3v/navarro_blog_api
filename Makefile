@@ -24,3 +24,6 @@ run:
 
 test:
 	cargo test -- --test-threads=1
+
+doc:
+	cargo doc --open
