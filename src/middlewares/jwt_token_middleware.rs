@@ -1,7 +1,11 @@
-use crate::{shared::treaties::jwt_treated::Jwt, utils::error_construct::error_construct};
+use crate::{
+    shared::{structs::jwt_claims::Claims, treaties::jwt_treated::Jwt},
+    utils::error_construct::error_construct,
+};
 use actix_web::{http::header::HeaderMap, HttpResponse};
+use jsonwebtoken::TokenData;
 
-pub fn jwt_token_middleware(headers: &HeaderMap) -> Result<(), HttpResponse> {
+pub fn jwt_token_middleware(headers: &HeaderMap) -> Result<TokenData<Claims>, HttpResponse> {
     let token = match headers.get("Authorization") {
         Some(header_value) => match header_value.to_str() {
             Ok(header_str) => {
@@ -32,7 +36,7 @@ pub fn jwt_token_middleware(headers: &HeaderMap) -> Result<(), HttpResponse> {
     };
 
     match Jwt::access_token_decode(token) {
-        Ok(_) => Ok(()),
+        Ok(token) => Ok(token),
         Err(e) => Err(e),
     }
 }
