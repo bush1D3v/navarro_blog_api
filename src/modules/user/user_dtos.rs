@@ -11,6 +11,7 @@ pub struct UserDTO {
     pub email: String,
     pub password: String,
     pub created_at: String,
+    pub updated_at: Option<String>,
 }
 
 static RE_NAME: Lazy<Regex> =
@@ -20,7 +21,7 @@ static RE_EMAIL: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$").unwrap());
 
 #[derive(Serialize, Deserialize, ToSchema, Validate, Clone)]
-pub struct CreateUserDTO {
+pub struct InsertUserDTO {
     #[validate(
 		length(
 			min = 3,
@@ -114,4 +115,59 @@ pub struct DeleteUserDTO {
 	)]
     #[serde(default)]
     pub password: String,
+}
+
+#[derive(ToSchema, Serialize, Deserialize, Clone, Validate)]
+pub struct PutUserDTO {
+    #[validate(
+		length(
+			min = 8,
+			max = 255,
+			message = "A senha deve ter pelo menos 8 caracteres."
+		),
+		regex(
+			path = * RE_PASSWORD,
+			message = "A senha deve ter pelo menos 1 caractere especial."
+		)
+	)]
+    #[serde(default)]
+    pub password: String,
+
+    #[validate(
+		length(
+			min = 8,
+			max = 255,
+			message = "A senha deve ter pelo menos 8 caracteres."
+		),
+		regex(
+			path = * RE_PASSWORD,
+			message = "A senha deve ter pelo menos 1 caractere especial."
+		)
+	)]
+    #[serde(default)]
+    pub new_password: String,
+
+    #[validate(
+		email(message = "O e-mail deve ser um endereço válido."),
+		length(
+			min = 10,
+			max = 127,
+			message = "O e-mail deve ter entre 10 e 127 caracteres."
+		),
+		regex(path = * RE_EMAIL, message = "O e-mail deve ser um endereço válido.")
+	)]
+    #[serde(default)]
+    pub email: String,
+
+    #[validate(
+		email(message = "O e-mail deve ser um endereço válido."),
+		length(
+			min = 10,
+			max = 127,
+			message = "O e-mail deve ter entre 10 e 127 caracteres."
+		),
+		regex(path = * RE_EMAIL, message = "O e-mail deve ser um endereço válido.")
+	)]
+    #[serde(default)]
+    pub new_email: String,
 }
