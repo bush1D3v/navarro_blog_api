@@ -1,5 +1,6 @@
 use crate::{shared::structs::jwt_claims::Claims, utils::error_construct::error_construct};
 use actix_web::HttpResponse;
+use jsonwebtoken::TokenData;
 use std::env;
 
 pub struct Jwt {}
@@ -53,7 +54,7 @@ impl Jwt {
         }
     }
 
-    pub fn access_token_decode(token: &str) -> Result<(), HttpResponse> {
+    pub fn access_token_decode(token: &str) -> Result<TokenData<Claims>, HttpResponse> {
         match jsonwebtoken::decode::<Claims>(
             token,
             &jsonwebtoken::DecodingKey::from_secret(
@@ -61,7 +62,7 @@ impl Jwt {
             ),
             &jsonwebtoken::Validation::default(),
         ) {
-            Ok(_) => Ok(()),
+            Ok(token) => Ok(token),
             Err(e) => Err(HttpResponse::Unauthorized().json(error_construct(
                 String::from("bearer token"),
                 String::from("unauthorized"),
@@ -73,7 +74,7 @@ impl Jwt {
         }
     }
 
-    pub fn _refresh_token_decode(token: &str) -> Result<(), HttpResponse> {
+    pub fn _refresh_token_decode(token: &str) -> Result<TokenData<Claims>, HttpResponse> {
         match jsonwebtoken::decode::<Claims>(
             token,
             &jsonwebtoken::DecodingKey::from_secret(
@@ -81,7 +82,7 @@ impl Jwt {
             ),
             &jsonwebtoken::Validation::default(),
         ) {
-            Ok(_) => Ok(()),
+            Ok(token) => Ok(token),
             Err(e) => Err(HttpResponse::Unauthorized().json(error_construct(
                 String::from("bearer token"),
                 String::from("unauthorized"),
