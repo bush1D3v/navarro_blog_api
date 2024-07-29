@@ -102,20 +102,21 @@ async fn insert_user(
     pg_pool: web::Data<deadpool_postgres::Pool>,
 ) -> impl Responder {
     match body.validate() {
-        Ok(_) => match Redis::get(&redis_pool, &body.email.clone()).await {
-            Ok(_) => {
-                return HttpResponse::Conflict().json(error_construct(
-                    String::from("email"),
-                    String::from("conflict"),
-                    String::from("Este e-mail já está sendo utilizado por outro usuário."),
-                    Some(body.email.clone()),
-                    None,
-                    None,
-                ))
-            }
-            Err(_) => (),
-        },
+        Ok(_) => (),
         Err(e) => return HttpResponse::BadRequest().json(e),
+    };
+    match Redis::get(&redis_pool, &body.email.clone()).await {
+        Ok(_) => {
+            return HttpResponse::Conflict().json(error_construct(
+                String::from("email"),
+                String::from("conflict"),
+                String::from("Este e-mail já está sendo utilizado por outro usuário."),
+                Some(body.email.clone()),
+                None,
+                None,
+            ))
+        }
+        Err(_) => (),
     };
     match insert_user_service(queue.clone(), pg_pool, body).await {
         Ok(resp) => match UserSerdes::serde_json_to_string(&resp) {
@@ -600,26 +601,30 @@ async fn delete_user(
         Ok(_) => (),
         Err(e) => return HttpResponse::BadRequest().json(e),
     };
-    match Redis::get(&redis_pool, &user_id).await {
-        Ok(string_user) => {
-            return match delete_user_service(
-                pg_pool,
-                queue,
-                body.password.clone(),
-                user_id.clone(),
-                Some(string_user),
-            )
-            .await
-            {
-                Ok(email) => delete_user_response_constructor(&redis_pool, &user_id, &email).await,
-                Err(e) => e,
-            }
-        }
-        Err(_) => (),
+    let string_user = match Redis::get(&redis_pool, &user_id).await {
+        Ok(string_user) => string_user,
+        Err(_) => String::from(""),
     };
-    match delete_user_service(pg_pool, queue, body.password.clone(), user_id.clone(), None).await {
-        Ok(email) => delete_user_response_constructor(&redis_pool, &user_id, &email).await,
-        Err(e) => e,
+    if string_user != String::from("") {
+        match delete_user_service(
+            pg_pool,
+            queue,
+            body.password.clone(),
+            user_id.clone(),
+            Some(string_user),
+        )
+        .await
+        {
+            Ok(email) => delete_user_response_constructor(&redis_pool, &user_id, &email).await,
+            Err(e) => e,
+        }
+    } else {
+        match delete_user_service(pg_pool, queue, body.password.clone(), user_id.clone(), None)
+            .await
+        {
+            Ok(email) => delete_user_response_constructor(&redis_pool, &user_id, &email).await,
+            Err(e) => e,
+        }
     }
 }
 
