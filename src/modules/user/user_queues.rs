@@ -107,10 +107,10 @@ async fn put_user_queue(pool: Pool, queue: Arc<PutUserAppQueue>) -> Result<(), H
 
         let mut sql_builder = sql_builder::SqlBuilder::update_table("users");
 
-        sql_builder.set("password", &quote(&user.new_password));
-        sql_builder.set("email", &quote(&user.new_email));
-        sql_builder.set("updated_at", &quote(&updated_at));
-        sql_builder.or_where_eq("id", &quote(user_id));
+        sql_builder.set("password", &quote(user.new_password.clone()));
+        sql_builder.set("email", &quote(user.new_email.clone()));
+        sql_builder.set("updated_at", &quote(updated_at));
+        sql_builder.or_where_eq("id", user_id);
 
         let mut this_sql = match sql_builder.sql() {
             Ok(x) => x,
@@ -171,7 +171,7 @@ async fn delete_user_queue(pool: Pool, queue: Arc<DeleteUserAppQueue>) -> Result
         let user_id = queue.pop().await;
 
         let mut sql_builder = SqlBuilder::delete_from("salt");
-        sql_builder.or_where_eq("user_id", &quote(user_id.clone()));
+        sql_builder.or_where_eq("user_id", user_id.clone());
 
         let mut this_sql = match sql_builder.sql() {
             Ok(x) => x,
@@ -181,7 +181,7 @@ async fn delete_user_queue(pool: Pool, queue: Arc<DeleteUserAppQueue>) -> Result
         salt_sql.push_str(&this_sql);
 
         let mut sql_builder = SqlBuilder::delete_from("users");
-        sql_builder.or_where_eq("id", &quote(user_id));
+        sql_builder.or_where_eq("id", user_id);
 
         let mut this_sql = match sql_builder.sql() {
             Ok(x) => x,

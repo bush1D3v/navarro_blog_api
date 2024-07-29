@@ -12,7 +12,6 @@ use actix_web::{
     web::{Data, Json, Query},
     HttpResponse,
 };
-use sql_builder::quote;
 use std::sync::Arc;
 
 fn user_dto_constructor(rows: Vec<postgres::Row>) -> UserDTO {
@@ -36,7 +35,7 @@ pub async fn get_user_salt_repository(
 ) -> Result<String, HttpResponse> {
     let mut sql_builder = sql_builder::SqlBuilder::select_from("salt");
     sql_builder.field("salt");
-    sql_builder.or_where_eq("user_id", &quote(user_id));
+    sql_builder.or_where_eq("user_id", user_id);
 
     let rows = match query_constructor_executor(pg_pool, sql_builder).await {
         Ok(x) => x,
@@ -86,7 +85,7 @@ pub async fn login_user_repository(
     pg_pool: Data<deadpool_postgres::Pool>,
 ) -> Result<UserDTO, HttpResponse> {
     let mut sql_builder = sql_builder::SqlBuilder::select_from("users");
-    sql_builder.or_where_eq("email", &quote(email.clone()));
+    sql_builder.or_where_eq("email", email.clone());
 
     let rows = match query_constructor_executor(pg_pool, sql_builder).await {
         Ok(x) => x,
@@ -112,7 +111,7 @@ pub async fn detail_user_repository(
     user_id: String,
 ) -> Result<UserDTO, HttpResponse> {
     let mut sql_builder = sql_builder::SqlBuilder::select_from("users");
-    sql_builder.or_where_eq("id", &quote(user_id));
+    sql_builder.or_where_eq("id", user_id);
 
     let rows = match query_constructor_executor(pg_pool, sql_builder).await {
         Ok(x) => x,
