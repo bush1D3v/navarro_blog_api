@@ -3,12 +3,12 @@ use crate::utils::{
 };
 use actix_web::{web::Data, HttpResponse};
 use deadpool_postgres::Pool;
-use sql_builder::SqlBuilder;
+use sql_builder::{quote, SqlBuilder};
 
 pub async fn email_exists(pg_pool: Data<Pool>, email: String) -> Result<(), HttpResponse> {
     let mut sql_builder = SqlBuilder::select_from("users");
     sql_builder.field("id");
-    sql_builder.or_where_eq("email", email.clone());
+    sql_builder.or_where_eq("email", &quote(email.clone()));
 
     let rows = match query_constructor_executor(pg_pool, sql_builder).await {
         Ok(x) => x,
@@ -31,7 +31,7 @@ pub async fn email_exists(pg_pool: Data<Pool>, email: String) -> Result<(), Http
 pub async fn email_not_exists(pg_pool: Data<Pool>, email: String) -> Result<(), HttpResponse> {
     let mut sql_builder = SqlBuilder::select_from("users");
     sql_builder.field("id");
-    sql_builder.or_where_eq("email", email.clone());
+    sql_builder.or_where_eq("email", &quote(email.clone()));
 
     let rows = match query_constructor_executor(pg_pool, sql_builder).await {
         Ok(x) => x,
