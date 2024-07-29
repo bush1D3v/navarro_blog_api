@@ -768,7 +768,7 @@ async fn put_user(
         Ok(string_user) => string_user,
         Err(_) => String::from(""),
     };
-    return match put_user_service(
+    match put_user_service(
         pg_pool,
         queue,
         body.clone(),
@@ -791,7 +791,7 @@ async fn put_user(
             Err(e) => e,
         },
         Err(e) => e,
-    };
+    }
 }
 
 async fn put_user_response_constructor(
