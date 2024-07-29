@@ -748,51 +748,35 @@ async fn put_user(
         Err(e) => return e,
     };
     match body.validate() {
-        Ok(_) => match Redis::get(&redis_pool, &body.new_email).await {
-            Ok(_) => {
-                return HttpResponse::Conflict().json(error_construct(
-                    String::from("email"),
-                    String::from("conflict"),
-                    String::from("Este e-mail já está sendo utilizado por outro usuário."),
-                    Some(body.email.clone()),
-                    None,
-                    None,
-                ))
-            }
-            Err(_) => (),
-        },
+        Ok(_) => (),
         Err(e) => return HttpResponse::BadRequest().json(e),
     };
-    match Redis::get(&redis_pool, &user_id).await {
-        Ok(string_user) => {
-            return match put_user_service(
-                pg_pool,
-                queue,
-                body.clone(),
-                user_id.clone(),
-                Some(string_user),
-            )
-            .await
-            {
-                Ok(service_resp) => match UserSerdes::serde_json_to_string(&service_resp) {
-                    Ok(string_user) => {
-                        put_user_response_constructor(
-                            &redis_pool,
-                            &service_resp.id,
-                            &body.email,
-                            &string_user,
-                            &body.new_email,
-                        )
-                        .await
-                    }
-                    Err(e) => e,
-                },
-                Err(e) => e,
-            }
+    match Redis::get(&redis_pool, &body.new_email).await {
+        Ok(_) => {
+            return HttpResponse::Conflict().json(error_construct(
+                String::from("email"),
+                String::from("conflict"),
+                String::from("Este e-mail já está sendo utilizado por outro usuário."),
+                Some(body.email.clone()),
+                None,
+                None,
+            ))
         }
         Err(_) => (),
     };
-    match put_user_service(pg_pool, queue, body.clone(), user_id.clone(), None).await {
+    let string_user = match Redis::get(&redis_pool, &user_id).await {
+        Ok(string_user) => string_user,
+        Err(_) => String::from(""),
+    };
+    return match put_user_service(
+        pg_pool,
+        queue,
+        body.clone(),
+        user_id.clone(),
+        Some(string_user),
+    )
+    .await
+    {
         Ok(service_resp) => match UserSerdes::serde_json_to_string(&service_resp) {
             Ok(string_user) => {
                 put_user_response_constructor(
@@ -807,7 +791,7 @@ async fn put_user(
             Err(e) => e,
         },
         Err(e) => e,
-    }
+    };
 }
 
 async fn put_user_response_constructor(

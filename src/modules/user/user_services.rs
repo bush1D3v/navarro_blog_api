@@ -178,7 +178,7 @@ pub async fn put_user_service(
         Err(e) => return Err(e),
     };
 
-    let mut db_user: UserDTO = if string_user.is_none() {
+    let mut db_user: UserDTO = if string_user == Some(String::from("")) || string_user.is_none() {
         match detail_user_repository(pg_pool.clone(), user_id.clone()).await {
             Ok(user_dto) => user_dto,
             Err(e) => return Err(e),
