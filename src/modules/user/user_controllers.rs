@@ -27,6 +27,7 @@ pub fn user_controllers_module() -> actix_web::Scope {
         .service(insert_user)
         .service(login_user)
         .service(list_users)
+        .service(user_id_options)
         .service(detail_user)
         .service(put_user)
         .service(delete_user)
@@ -605,7 +606,7 @@ async fn delete_user(
         Ok(string_user) => string_user,
         Err(_) => String::from(""),
     };
-    if string_user != String::from("") {
+    if !string_user.is_empty() {
         match delete_user_service(
             pg_pool,
             queue,
@@ -822,7 +823,7 @@ async fn put_user_response_constructor(
         status = 200, headers((
             "access-control-allow-methods" = Vec<String>, description = "Métodos HTTP suportados pela entidade"
         )),
-        description = "Retorna quais métodos HTTP são suportados nas rotas da entidade (OK)",
+        description = "Retorna quais métodos HTTP são suportados nas rotas do seu prefixo (OK)",
     ), (
 		status = 401, description = "Credenciais de autenticação inválidas (Unauthorized)",
 		body = ErrorStruct, content_type = "application/json", example = json ! ({
@@ -842,9 +843,43 @@ async fn put_user_response_constructor(
 async fn user_options(req: HttpRequest) -> impl Responder {
     match jwt_token_middleware(req.headers()) {
         Ok(_) => HttpResponse::Ok()
+            .append_header(("Access-Control-Allow-Methods", "GET, POST, OPTIONS"))
+            .finish(),
+        Err(e) => e,
+    }
+}
+
+#[utoipa::path(
+    tag = "user",
+    path = "/user/{user_id}",
+    security(("bearer_auth" = [])),
+    responses((
+        status = 200, headers((
+            "access-control-allow-methods" = Vec<String>, description = "Métodos HTTP suportados pela entidade"
+        )),
+        description = "Retorna quais métodos HTTP são suportados nas rotas do seu prefixo (OK)",
+    ), (
+		status = 401, description = "Credenciais de autenticação inválidas (Unauthorized)",
+		body = ErrorStruct, content_type = "application/json", example = json ! ({
+            "bearer token": [{
+                "code": "unauthorized",
+                "message": "Acesso negado por token de autorização.",
+                "params": {
+                    "min": null,
+                    "value": null,
+                    "max": null
+                }
+		    }]
+        })
+	))
+)]
+#[options("{user_id}")]
+async fn user_id_options(req: HttpRequest) -> impl Responder {
+    match jwt_token_middleware(req.headers()) {
+        Ok(_) => HttpResponse::Ok()
             .append_header((
                 "Access-Control-Allow-Methods",
-                "GET, POST, PATCH, PUT, DELETE, OPTIONS",
+                "GET, PATCH, PUT, DELETE, OPTIONS",
             ))
             .finish(),
         Err(e) => e,
