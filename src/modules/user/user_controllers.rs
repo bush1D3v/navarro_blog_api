@@ -479,39 +479,41 @@ async fn detail_user(
         Ok(_) => (),
         Err(e) => return e,
     };
-    match Redis::get(&redis_pool, &user_id).await {
-        Ok(redis_user) => {
-            return match UserSerdes::serde_string_to_json(&redis_user) {
-                Ok(user) => {
-                    let user = DetailUserDTO {
-                        id: user.id,
-                        name: user.name,
-                        email: user.email,
-                        created_at: user.created_at,
-                    };
-                    HttpResponse::Ok().json(user)
-                }
-                Err(e) => e,
-            }
-        }
-        Err(_) => (),
+    let redis_user = match Redis::get(&redis_pool, &user_id).await {
+        Ok(redis_user) => redis_user,
+        Err(_) => String::from(""),
     };
-    match detail_user_service(pg_pool, user_id.clone()).await {
-        Ok(pg_user) => match UserSerdes::serde_json_to_string(&pg_user) {
-            Ok(redis_user) => {
-                let _ = Redis::set(&redis_pool, &user_id, &redis_user).await;
-                let _ = Redis::set(&redis_pool, &pg_user.email, &redis_user).await;
+    if !redis_user.is_empty() {
+        match UserSerdes::serde_string_to_json(&redis_user) {
+            Ok(user) => {
                 let user = DetailUserDTO {
-                    id: pg_user.id,
-                    name: pg_user.name,
-                    email: pg_user.email,
-                    created_at: pg_user.created_at,
+                    id: user.id,
+                    name: user.name,
+                    email: user.email,
+                    created_at: user.created_at,
                 };
                 HttpResponse::Ok().json(user)
             }
             Err(e) => e,
-        },
-        Err(e) => e,
+        }
+    } else {
+        match detail_user_service(pg_pool, user_id.clone()).await {
+            Ok(pg_user) => match UserSerdes::serde_json_to_string(&pg_user) {
+                Ok(redis_user) => {
+                    let _ = Redis::set(&redis_pool, &user_id, &redis_user).await;
+                    let _ = Redis::set(&redis_pool, &pg_user.email, &redis_user).await;
+                    let user = DetailUserDTO {
+                        id: pg_user.id,
+                        name: pg_user.name,
+                        email: pg_user.email,
+                        created_at: pg_user.created_at,
+                    };
+                    HttpResponse::Ok().json(user)
+                }
+                Err(e) => e,
+            },
+            Err(e) => e,
+        }
     }
 }
 
