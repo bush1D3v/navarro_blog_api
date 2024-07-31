@@ -220,36 +220,24 @@ async fn login_user(
     redis_pool: web::Data<deadpool_redis::Pool>,
 ) -> impl Responder {
     match body.validate() {
-        Ok(_) => match Redis::get(&redis_pool, &body.email).await {
-            Ok(string_user) => {
-                let user_dto = match UserSerdes::serde_string_to_json(&string_user) {
-                    Ok(user) => user,
-                    Err(e) => return e,
-                };
-                let user = LoginUserDTO {
-                    email: user_dto.email,
-                    password: body.password.clone(),
-                };
-                return match login_user_service(web::Json(user), pg_pool, true).await {
-                    Ok(service_resp) => {
-                        login_user_response_constructor(
-                            service_resp,
-                            &redis_pool,
-                            &string_user,
-                            &body.email,
-                        )
-                        .await
-                    }
-                    Err(e) => e,
-                };
-            }
-            Err(_) => (),
-        },
+        Ok(_) => (),
         Err(e) => return HttpResponse::BadRequest().json(e),
     };
-    match login_user_service(web::Json(body.clone()), pg_pool, false).await {
-        Ok(service_resp) => match UserSerdes::serde_json_to_string(&service_resp.user) {
-            Ok(string_user) => {
+    let string_user = match Redis::get(&redis_pool, &body.email).await {
+        Ok(string_user) => string_user,
+        Err(_) => String::from(""),
+    };
+    if !string_user.is_empty() {
+        let user_dto = match UserSerdes::serde_string_to_json(&string_user) {
+            Ok(user) => user,
+            Err(e) => return e,
+        };
+        let user = LoginUserDTO {
+            email: user_dto.email,
+            password: body.password.clone(),
+        };
+        match login_user_service(web::Json(user), pg_pool, true).await {
+            Ok(service_resp) => {
                 login_user_response_constructor(
                     service_resp,
                     &redis_pool,
@@ -259,8 +247,23 @@ async fn login_user(
                 .await
             }
             Err(e) => e,
-        },
-        Err(e) => e,
+        }
+    } else {
+        match login_user_service(web::Json(body.clone()), pg_pool, false).await {
+            Ok(service_resp) => match UserSerdes::serde_json_to_string(&service_resp.user) {
+                Ok(string_user) => {
+                    login_user_response_constructor(
+                        service_resp,
+                        &redis_pool,
+                        &string_user,
+                        &body.email,
+                    )
+                    .await
+                }
+                Err(e) => e,
+            },
+            Err(e) => e,
+        }
     }
 }
 
