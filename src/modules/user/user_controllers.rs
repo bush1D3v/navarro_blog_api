@@ -106,31 +106,33 @@ async fn insert_user(
         Ok(_) => (),
         Err(e) => return HttpResponse::BadRequest().json(e),
     };
-    match Redis::get(&redis_pool, &body.email.clone()).await {
-        Ok(_) => {
-            return HttpResponse::Conflict().json(error_construct(
-                String::from("email"),
-                String::from("conflict"),
-                String::from("Este e-mail já está sendo utilizado por outro usuário."),
-                Some(body.email.clone()),
-                None,
-                None,
-            ))
-        }
-        Err(_) => (),
+    let redis_user_conflict = match Redis::get(&redis_pool, &body.email.clone()).await {
+        Ok(_) => true,
+        Err(_) => false,
     };
-    match insert_user_service(queue.clone(), pg_pool, body).await {
-        Ok(resp) => match UserSerdes::serde_json_to_string(&resp) {
-            Ok(string_user) => {
-                let _ = Redis::set(&redis_pool, &resp.id, &string_user).await;
-                let _ = Redis::set(&redis_pool, &resp.email, &string_user).await;
-                HttpResponse::Created()
-                    .append_header(("Location", format!("/user/{}", resp.id)))
-                    .finish()
-            }
+    if redis_user_conflict {
+        HttpResponse::Conflict().json(error_construct(
+            String::from("email"),
+            String::from("conflict"),
+            String::from("Este e-mail já está sendo utilizado por outro usuário."),
+            Some(body.email.clone()),
+            None,
+            None,
+        ))
+    } else {
+        match insert_user_service(queue.clone(), pg_pool, body).await {
+            Ok(resp) => match UserSerdes::serde_json_to_string(&resp) {
+                Ok(string_user) => {
+                    let _ = Redis::set(&redis_pool, &resp.id, &string_user).await;
+                    let _ = Redis::set(&redis_pool, &resp.email, &string_user).await;
+                    HttpResponse::Created()
+                        .append_header(("Location", format!("/user/{}", resp.id)))
+                        .finish()
+                }
+                Err(e) => e,
+            },
             Err(e) => e,
-        },
-        Err(e) => e,
+        }
     }
 }
 
@@ -762,46 +764,48 @@ async fn put_user(
         Ok(_) => (),
         Err(e) => return HttpResponse::BadRequest().json(e),
     };
-    match Redis::get(&redis_pool, &body.new_email).await {
-        Ok(_) => {
-            return HttpResponse::Conflict().json(error_construct(
-                String::from("email"),
-                String::from("conflict"),
-                String::from("Este e-mail já está sendo utilizado por outro usuário."),
-                Some(body.email.clone()),
-                None,
-                None,
-            ))
-        }
-        Err(_) => (),
+    let redis_user_conflict = match Redis::get(&redis_pool, &body.new_email).await {
+        Ok(_) => true,
+        Err(_) => false,
     };
-    let string_user = match Redis::get(&redis_pool, &user_id).await {
-        Ok(string_user) => string_user,
-        Err(_) => String::from(""),
-    };
-    match put_user_service(
-        pg_pool,
-        queue,
-        body.clone(),
-        user_id.clone(),
-        Some(string_user),
-    )
-    .await
-    {
-        Ok(service_resp) => match UserSerdes::serde_json_to_string(&service_resp) {
-            Ok(string_user) => {
-                put_user_response_constructor(
-                    &redis_pool,
-                    &service_resp.id,
-                    &body.email,
-                    &string_user,
-                    &body.new_email,
-                )
-                .await
-            }
+    if redis_user_conflict {
+        HttpResponse::Conflict().json(error_construct(
+            String::from("email"),
+            String::from("conflict"),
+            String::from("Este e-mail já está sendo utilizado por outro usuário."),
+            Some(body.email.clone()),
+            None,
+            None,
+        ))
+    } else {
+        let string_user = match Redis::get(&redis_pool, &user_id).await {
+            Ok(string_user) => string_user,
+            Err(_) => String::from(""),
+        };
+        match put_user_service(
+            pg_pool,
+            queue,
+            body.clone(),
+            user_id.clone(),
+            Some(string_user),
+        )
+        .await
+        {
+            Ok(service_resp) => match UserSerdes::serde_json_to_string(&service_resp) {
+                Ok(string_user) => {
+                    put_user_response_constructor(
+                        &redis_pool,
+                        &service_resp.id,
+                        &body.email,
+                        &string_user,
+                        &body.new_email,
+                    )
+                    .await
+                }
+                Err(e) => e,
+            },
             Err(e) => e,
-        },
-        Err(e) => e,
+        }
     }
 }
 
