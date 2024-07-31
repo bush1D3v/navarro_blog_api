@@ -119,9 +119,9 @@ async fn insert_user(
     } else {
         match insert_user_service(queue.clone(), pg_pool, body).await {
             Ok(resp) => match UserSerdes::serde_json_to_string(&resp) {
-                Ok(string_user) => {
-                    let _ = Redis::set(&redis_pool, &resp.id, &string_user).await;
-                    let _ = Redis::set(&redis_pool, &resp.email, &string_user).await;
+                Ok(redis_user) => {
+                    let _ = Redis::set(&redis_pool, &resp.id, &redis_user).await;
+                    let _ = Redis::set(&redis_pool, &resp.email, &redis_user).await;
                     HttpResponse::Created()
                         .append_header(("Location", format!("/user/{}", resp.id)))
                         .finish()
@@ -222,12 +222,12 @@ async fn login_user(
         Ok(_) => (),
         Err(e) => return HttpResponse::BadRequest().json(e),
     };
-    let string_user = match Redis::get(&redis_pool, &body.email).await {
-        Ok(string_user) => string_user,
+    let redis_user = match Redis::get(&redis_pool, &body.email).await {
+        Ok(redis_user) => redis_user,
         Err(_) => String::from(""),
     };
-    if !string_user.is_empty() {
-        let user_dto = match UserSerdes::serde_string_to_json(&string_user) {
+    if !redis_user.is_empty() {
+        let user_dto = match UserSerdes::serde_string_to_json(&redis_user) {
             Ok(user) => user,
             Err(e) => return e,
         };
@@ -237,24 +237,19 @@ async fn login_user(
         };
         match login_user_service(web::Json(user), pg_pool, true).await {
             Ok(service_resp) => {
-                login_user_response_constructor(
-                    service_resp,
-                    &redis_pool,
-                    &string_user,
-                    &body.email,
-                )
-                .await
+                login_user_response_constructor(service_resp, &redis_pool, &redis_user, &body.email)
+                    .await
             }
             Err(e) => e,
         }
     } else {
         match login_user_service(web::Json(body.clone()), pg_pool, false).await {
             Ok(service_resp) => match UserSerdes::serde_json_to_string(&service_resp.user) {
-                Ok(string_user) => {
+                Ok(redis_user) => {
                     login_user_response_constructor(
                         service_resp,
                         &redis_pool,
-                        &string_user,
+                        &redis_user,
                         &body.email,
                     )
                     .await
@@ -277,11 +272,11 @@ struct LoginUserControllerResponse {
 async fn login_user_response_constructor(
     service_resp: LoginUserServiceResponse,
     redis_pool: &deadpool_redis::Pool,
-    string_user: &str,
+    redis_user: &str,
     email: &str,
 ) -> HttpResponse<BoxBody> {
-    let _ = Redis::set(redis_pool, &service_resp.user.id, string_user).await;
-    let _ = Redis::set(redis_pool, email, string_user).await;
+    let _ = Redis::set(redis_pool, &service_resp.user.id, redis_user).await;
+    let _ = Redis::set(redis_pool, email, redis_user).await;
     HttpResponse::Ok().json(LoginUserControllerResponse {
         access_token: service_resp.access_token,
         access_expires_in: service_resp.access_expires_in,
@@ -606,17 +601,17 @@ async fn delete_user(
         Ok(_) => (),
         Err(e) => return HttpResponse::BadRequest().json(e),
     };
-    let string_user = match Redis::get(&redis_pool, &user_id).await {
-        Ok(string_user) => string_user,
+    let redis_user = match Redis::get(&redis_pool, &user_id).await {
+        Ok(redis_user) => redis_user,
         Err(_) => String::from(""),
     };
-    if !string_user.is_empty() {
+    if !redis_user.is_empty() {
         match delete_user_service(
             pg_pool,
             queue,
             body.password.clone(),
             user_id.clone(),
-            Some(string_user),
+            Some(redis_user),
         )
         .await
         {
@@ -772,8 +767,8 @@ async fn put_user(
             None,
         ))
     } else {
-        let string_user = match Redis::get(&redis_pool, &user_id).await {
-            Ok(string_user) => string_user,
+        let redis_user = match Redis::get(&redis_pool, &user_id).await {
+            Ok(redis_user) => redis_user,
             Err(_) => String::from(""),
         };
         match put_user_service(
@@ -781,17 +776,17 @@ async fn put_user(
             queue,
             body.clone(),
             user_id.clone(),
-            Some(string_user),
+            Some(redis_user),
         )
         .await
         {
             Ok(service_resp) => match UserSerdes::serde_json_to_string(&service_resp) {
-                Ok(string_user) => {
+                Ok(redis_user) => {
                     put_user_response_constructor(
                         &redis_pool,
                         &service_resp.id,
                         &body.email,
-                        &string_user,
+                        &redis_user,
                         &body.new_email,
                     )
                     .await
@@ -807,12 +802,12 @@ async fn put_user_response_constructor(
     redis_pool: &deadpool_redis::Pool,
     user_id: &str,
     excluded_email: &str,
-    string_user: &str,
+    redis_user: &str,
     new_email: &str,
 ) -> HttpResponse {
     let _ = Redis::delete(redis_pool, excluded_email).await;
-    let _ = Redis::set(redis_pool, user_id, string_user).await;
-    let _ = Redis::set(redis_pool, new_email, string_user).await;
+    let _ = Redis::set(redis_pool, user_id, redis_user).await;
+    let _ = Redis::set(redis_pool, new_email, redis_user).await;
     HttpResponse::Accepted()
         .append_header(("Location", format!("/user/{}", user_id)))
         .finish()

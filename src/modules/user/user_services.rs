@@ -133,15 +133,15 @@ pub async fn delete_user_service(
     queue: Data<Arc<DeleteUserAppQueue>>,
     user_password: String,
     user_id: String,
-    string_user: Option<String>,
+    redis_user: Option<String>,
 ) -> Result<String, HttpResponse> {
-    let db_user: UserDTO = if string_user.is_none() {
+    let db_user: UserDTO = if redis_user.is_none() {
         match detail_user_repository(pg_pool.clone(), user_id.clone()).await {
             Ok(user_dto) => user_dto,
             Err(e) => return Err(e),
         }
     } else {
-        match UserSerdes::serde_string_to_json(&string_user.unwrap()) {
+        match UserSerdes::serde_string_to_json(&redis_user.unwrap()) {
             Ok(user_dto) => user_dto,
             Err(e) => return Err(e),
         }
@@ -171,20 +171,20 @@ pub async fn put_user_service(
     queue: Data<Arc<PutUserAppQueue>>,
     mut body: PutUserDTO,
     user_id: String,
-    string_user: Option<String>,
+    redis_user: Option<String>,
 ) -> Result<UserDTO, HttpResponse> {
     match email_exists(pg_pool.clone(), body.new_email.clone()).await {
         Ok(_) => (),
         Err(e) => return Err(e),
     };
 
-    let mut db_user: UserDTO = if string_user == Some(String::from("")) || string_user.is_none() {
+    let mut db_user: UserDTO = if redis_user == Some(String::from("")) || redis_user.is_none() {
         match detail_user_repository(pg_pool.clone(), user_id.clone()).await {
             Ok(user_dto) => user_dto,
             Err(e) => return Err(e),
         }
     } else {
-        match UserSerdes::serde_string_to_json(&string_user.unwrap()) {
+        match UserSerdes::serde_string_to_json(&redis_user.unwrap()) {
             Ok(user_dto) => user_dto,
             Err(e) => return Err(e),
         }
