@@ -106,10 +106,7 @@ async fn insert_user(
         Ok(_) => (),
         Err(e) => return HttpResponse::BadRequest().json(e),
     };
-    let redis_user_conflict = match Redis::get(&redis_pool, &body.email.clone()).await {
-        Ok(_) => true,
-        Err(_) => false,
-    };
+    let redis_user_conflict = Redis::get(&redis_pool, &body.email.clone()).await.is_ok();
     if redis_user_conflict {
         HttpResponse::Conflict().json(error_construct(
             String::from("email"),
@@ -764,10 +761,7 @@ async fn put_user(
         Ok(_) => (),
         Err(e) => return HttpResponse::BadRequest().json(e),
     };
-    let redis_user_conflict = match Redis::get(&redis_pool, &body.new_email).await {
-        Ok(_) => true,
-        Err(_) => false,
-    };
+    let redis_user_conflict = Redis::get(&redis_pool, &body.new_email).await.is_ok();
     if redis_user_conflict {
         HttpResponse::Conflict().json(error_construct(
             String::from("email"),
@@ -830,7 +824,7 @@ async fn put_user_response_constructor(
     security(("bearer_auth" = [])),
     responses((
         status = 200, headers((
-            "access-control-allow-methods" = Vec<String>, description = "Métodos HTTP suportados pela entidade"
+            "access-control-allow-methods" = Vec<String>, description = "Métodos HTTP suportados nas rotas do seu prefixo"
         )),
         description = "Retorna quais métodos HTTP são suportados nas rotas do seu prefixo (OK)",
     ), (
@@ -864,7 +858,7 @@ async fn user_options(req: HttpRequest) -> impl Responder {
     security(("bearer_auth" = [])),
     responses((
         status = 200, headers((
-            "access-control-allow-methods" = Vec<String>, description = "Métodos HTTP suportados pela entidade"
+            "access-control-allow-methods" = Vec<String>, description = "Métodos HTTP suportados nas rotas do seu prefixo"
         )),
         description = "Retorna quais métodos HTTP são suportados nas rotas do seu prefixo (OK)",
     ), (
