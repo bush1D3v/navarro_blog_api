@@ -12,7 +12,6 @@ use crate::{
         user_services::{delete_user_service, login_user_service},
     },
     shared::structs::query_params::QueryParams,
-    utils::error_construct::error_construct,
 };
 use actix_web::{
     body::BoxBody, delete, get, options, post, put, web, HttpRequest, HttpResponse, Responder,
@@ -106,30 +105,22 @@ async fn insert_user(
         Ok(_) => (),
         Err(e) => return HttpResponse::BadRequest().json(e),
     };
-    let redis_user_conflict = Redis::get(&redis_pool, &body.email.clone()).await.is_ok();
-    if redis_user_conflict {
-        HttpResponse::Conflict().json(error_construct(
-            String::from("email"),
-            String::from("conflict"),
-            String::from("Este e-mail já está sendo utilizado por outro usuário."),
-            Some(body.email.clone()),
-            None,
-            None,
-        ))
-    } else {
-        match insert_user_service(queue.clone(), pg_pool, body).await {
-            Ok(resp) => match UserSerdes::serde_json_to_string(&resp) {
-                Ok(redis_user) => {
-                    let _ = Redis::set(&redis_pool, &resp.id, &redis_user).await;
-                    let _ = Redis::set(&redis_pool, &resp.email, &redis_user).await;
-                    HttpResponse::Created()
-                        .append_header(("Location", format!("/user/{}", resp.id)))
-                        .finish()
-                }
-                Err(e) => e,
-            },
+    let redis_user = match Redis::get(&redis_pool, &body.email.clone()).await {
+        Ok(redis_user) => redis_user,
+        Err(_) => String::from(""),
+    };
+    match insert_user_service(queue.clone(), pg_pool, body, redis_user).await {
+        Ok(resp) => match UserSerdes::serde_json_to_string(&resp) {
+            Ok(redis_user) => {
+                let _ = Redis::set(&redis_pool, &resp.id, &redis_user).await;
+                let _ = Redis::set(&redis_pool, &resp.email, &redis_user).await;
+                HttpResponse::Created()
+                    .append_header(("Location", format!("/user/{}", resp.id)))
+                    .finish()
+            }
             Err(e) => e,
-        }
+        },
+        Err(e) => e,
     }
 }
 
@@ -226,38 +217,12 @@ async fn login_user(
         Ok(redis_user) => redis_user,
         Err(_) => String::from(""),
     };
-    if !redis_user.is_empty() {
-        let user_dto = match UserSerdes::serde_string_to_json(&redis_user) {
-            Ok(user) => user,
-            Err(e) => return e,
-        };
-        let user = LoginUserDTO {
-            email: user_dto.email,
-            password: body.password.clone(),
-        };
-        match login_user_service(web::Json(user), pg_pool, true).await {
-            Ok(service_resp) => {
-                login_user_response_constructor(service_resp, &redis_pool, &redis_user, &body.email)
-                    .await
-            }
-            Err(e) => e,
+    match login_user_service(body.clone(), pg_pool, redis_user.clone()).await {
+        Ok(service_resp) => {
+            login_user_response_constructor(service_resp, &redis_pool, &redis_user, &body.email)
+                .await
         }
-    } else {
-        match login_user_service(web::Json(body.clone()), pg_pool, false).await {
-            Ok(service_resp) => match UserSerdes::serde_json_to_string(&service_resp.user) {
-                Ok(redis_user) => {
-                    login_user_response_constructor(
-                        service_resp,
-                        &redis_pool,
-                        &redis_user,
-                        &body.email,
-                    )
-                    .await
-                }
-                Err(e) => e,
-            },
-            Err(e) => e,
-        }
+        Err(e) => e,
     }
 }
 
@@ -477,37 +442,22 @@ async fn detail_user(
         Ok(redis_user) => redis_user,
         Err(_) => String::from(""),
     };
-    if !redis_user.is_empty() {
-        match UserSerdes::serde_string_to_json(&redis_user) {
-            Ok(user) => {
+    match detail_user_service(pg_pool, user_id.clone(), redis_user).await {
+        Ok(user_dto) => match UserSerdes::serde_json_to_string(&user_dto) {
+            Ok(redis_user) => {
+                let _ = Redis::set(&redis_pool, &user_id, &redis_user).await;
+                let _ = Redis::set(&redis_pool, &user_dto.email, &redis_user).await;
                 let user = DetailUserDTO {
-                    id: user.id,
-                    name: user.name,
-                    email: user.email,
-                    created_at: user.created_at,
+                    id: user_dto.id,
+                    name: user_dto.name,
+                    email: user_dto.email,
+                    created_at: user_dto.created_at,
                 };
                 HttpResponse::Ok().json(user)
             }
             Err(e) => e,
-        }
-    } else {
-        match detail_user_service(pg_pool, user_id.clone()).await {
-            Ok(pg_user) => match UserSerdes::serde_json_to_string(&pg_user) {
-                Ok(redis_user) => {
-                    let _ = Redis::set(&redis_pool, &user_id, &redis_user).await;
-                    let _ = Redis::set(&redis_pool, &pg_user.email, &redis_user).await;
-                    let user = DetailUserDTO {
-                        id: pg_user.id,
-                        name: pg_user.name,
-                        email: pg_user.email,
-                        created_at: pg_user.created_at,
-                    };
-                    HttpResponse::Ok().json(user)
-                }
-                Err(e) => e,
-            },
-            Err(e) => e,
-        }
+        },
+        Err(e) => e,
     }
 }
 
@@ -605,26 +555,17 @@ async fn delete_user(
         Ok(redis_user) => redis_user,
         Err(_) => String::from(""),
     };
-    if !redis_user.is_empty() {
-        match delete_user_service(
-            pg_pool,
-            queue,
-            body.password.clone(),
-            user_id.clone(),
-            Some(redis_user),
-        )
-        .await
-        {
-            Ok(email) => delete_user_response_constructor(&redis_pool, &user_id, &email).await,
-            Err(e) => e,
-        }
-    } else {
-        match delete_user_service(pg_pool, queue, body.password.clone(), user_id.clone(), None)
-            .await
-        {
-            Ok(email) => delete_user_response_constructor(&redis_pool, &user_id, &email).await,
-            Err(e) => e,
-        }
+    match delete_user_service(
+        pg_pool,
+        queue,
+        body.password.clone(),
+        user_id.clone(),
+        redis_user,
+    )
+    .await
+    {
+        Ok(email) => delete_user_response_constructor(&redis_pool, &user_id, &email).await,
+        Err(e) => e,
     }
 }
 
@@ -756,45 +697,27 @@ async fn put_user(
         Ok(_) => (),
         Err(e) => return HttpResponse::BadRequest().json(e),
     };
-    let redis_user_conflict = Redis::get(&redis_pool, &body.new_email).await.is_ok();
-    if redis_user_conflict {
-        HttpResponse::Conflict().json(error_construct(
-            String::from("email"),
-            String::from("conflict"),
-            String::from("Este e-mail já está sendo utilizado por outro usuário."),
-            Some(body.email.clone()),
-            None,
-            None,
-        ))
-    } else {
-        let redis_user = match Redis::get(&redis_pool, &user_id).await {
-            Ok(redis_user) => redis_user,
-            Err(_) => String::from(""),
+    let redis_user = match Redis::get(&redis_pool, &body.new_email).await {
+        Ok(redis_user) => redis_user,
+        Err(_) => String::from(""),
+    };
+    let service_response =
+        match put_user_service(pg_pool, queue, body.clone(), user_id.clone(), redis_user).await {
+            Ok(service_resp) => service_resp,
+            Err(e) => return e,
         };
-        match put_user_service(
-            pg_pool,
-            queue,
-            body.clone(),
-            user_id.clone(),
-            Some(redis_user),
-        )
-        .await
-        {
-            Ok(service_resp) => match UserSerdes::serde_json_to_string(&service_resp) {
-                Ok(redis_user) => {
-                    put_user_response_constructor(
-                        &redis_pool,
-                        &service_resp.id,
-                        &body.email,
-                        &redis_user,
-                        &body.new_email,
-                    )
-                    .await
-                }
-                Err(e) => e,
-            },
-            Err(e) => e,
+    match UserSerdes::serde_json_to_string(&service_response) {
+        Ok(redis_user) => {
+            put_user_response_constructor(
+                &redis_pool,
+                &service_response.id,
+                &body.email,
+                &redis_user,
+                &body.new_email,
+            )
+            .await
         }
+        Err(e) => e,
     }
 }
 

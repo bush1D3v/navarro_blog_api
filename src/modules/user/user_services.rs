@@ -26,7 +26,18 @@ pub async fn insert_user_service(
     queue: Data<Arc<InsertUserAppQueue>>,
     pg_pool: Data<deadpool_postgres::Pool>,
     mut body: Json<InsertUserDTO>,
+    redis_user: String,
 ) -> Result<UserDTO, HttpResponse> {
+    if redis_user != String::from("") {
+        return Err(HttpResponse::Conflict().json(error_construct(
+            String::from("email"),
+            String::from("conflict"),
+            String::from("Este e-mail já está sendo utilizado por outro usuário."),
+            Some(body.email.clone()),
+            None,
+            None,
+        )));
+    }
     match email_exists(pg_pool, body.email.clone()).await {
         Ok(_) => (),
         Err(e) => return Err(e),
@@ -55,11 +66,11 @@ pub struct LoginUserServiceResponse {
 }
 
 pub async fn login_user_service(
-    body: Json<LoginUserDTO>,
+    body: LoginUserDTO,
     pg_pool: Data<deadpool_postgres::Pool>,
-    email_found_in_redis: bool,
+    redis_user: String,
 ) -> Result<LoginUserServiceResponse, HttpResponse> {
-    if !email_found_in_redis {
+    if redis_user == String::from("") {
         match email_not_exists(pg_pool.clone(), body.email.clone()).await {
             Ok(_) => (),
             Err(e) => return Err(e),
@@ -111,10 +122,18 @@ pub async fn login_user_service(
 pub async fn detail_user_service(
     pg_pool: Data<deadpool_postgres::Pool>,
     user_id: String,
+    redis_user: String,
 ) -> Result<UserDTO, HttpResponse> {
-    match detail_user_repository(pg_pool, user_id.clone()).await {
-        Ok(user) => Ok(user),
-        Err(e) => Err(e),
+    if redis_user != String::from("") {
+        match UserSerdes::serde_string_to_json(&redis_user) {
+            Ok(user) => Ok(user),
+            Err(e) => Err(e),
+        }
+    } else {
+        match detail_user_repository(pg_pool, user_id.clone()).await {
+            Ok(user) => Ok(user),
+            Err(e) => Err(e),
+        }
     }
 }
 
@@ -133,15 +152,15 @@ pub async fn delete_user_service(
     queue: Data<Arc<DeleteUserAppQueue>>,
     user_password: String,
     user_id: String,
-    redis_user: Option<String>,
+    redis_user: String,
 ) -> Result<String, HttpResponse> {
-    let db_user: UserDTO = if redis_user.is_none() {
+    let db_user: UserDTO = if redis_user == String::from("") {
         match detail_user_repository(pg_pool.clone(), user_id.clone()).await {
             Ok(user_dto) => user_dto,
             Err(e) => return Err(e),
         }
     } else {
-        match UserSerdes::serde_string_to_json(&redis_user.unwrap()) {
+        match UserSerdes::serde_string_to_json(&redis_user) {
             Ok(user_dto) => user_dto,
             Err(e) => return Err(e),
         }
@@ -171,23 +190,26 @@ pub async fn put_user_service(
     queue: Data<Arc<PutUserAppQueue>>,
     mut body: PutUserDTO,
     user_id: String,
-    redis_user: Option<String>,
+    redis_user: String,
 ) -> Result<UserDTO, HttpResponse> {
+    if redis_user != String::from("") {
+        return Err(HttpResponse::Conflict().json(error_construct(
+            String::from("email"),
+            String::from("conflict"),
+            String::from("Este e-mail já está sendo utilizado por outro usuário."),
+            Some(body.email.clone()),
+            None,
+            None,
+        )));
+    }
     match email_exists(pg_pool.clone(), body.new_email.clone()).await {
         Ok(_) => (),
         Err(e) => return Err(e),
     };
 
-    let mut db_user: UserDTO = if redis_user == Some(String::from("")) || redis_user.is_none() {
-        match detail_user_repository(pg_pool.clone(), user_id.clone()).await {
-            Ok(user_dto) => user_dto,
-            Err(e) => return Err(e),
-        }
-    } else {
-        match UserSerdes::serde_string_to_json(&redis_user.unwrap()) {
-            Ok(user_dto) => user_dto,
-            Err(e) => return Err(e),
-        }
+    let mut db_user = match detail_user_repository(pg_pool.clone(), user_id.clone()).await {
+        Ok(user_dto) => user_dto,
+        Err(e) => return Err(e),
     };
 
     if db_user.email != body.email {
