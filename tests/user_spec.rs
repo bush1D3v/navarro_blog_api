@@ -44,6 +44,7 @@ mod unitary_specs {
             web::Data::new(queue.clone()),
             web::Data::new(PostgresModels::postgres_success()),
             web::Json(user.clone().into()),
+            String::from(""),
         )
         .await
         .unwrap();
@@ -79,6 +80,7 @@ mod unitary_specs {
             web::Data::new(queue.clone()),
             web::Data::new(PostgresModels::postgres_success()),
             web::Json(user.clone().into()),
+            String::from(""),
         )
         .await
         .err()
@@ -113,6 +115,7 @@ mod unitary_specs {
             web::Data::new(queue.clone()),
             web::Data::new(PostgresModels::postgres_error()),
             web::Json(user.clone().into()),
+            String::from(""),
         )
         .await
         .err()
@@ -174,9 +177,9 @@ mod unitary_specs {
         let login_user = UserModels::login_user_model();
 
         let resp = login_user_service(
-            web::Json(login_user.clone().into()),
+            login_user.clone().into(),
             web::Data::new(PostgresModels::postgres_success()),
-            false,
+            String::from(""),
         )
         .await
         .unwrap();
@@ -222,9 +225,9 @@ mod unitary_specs {
         dotenv::dotenv().ok();
 
         let resp = login_user_service(
-            web::Json(UserModels::login_user_model().into()),
+            UserModels::login_user_model().into(),
             web::Data::new(PostgresModels::postgres_success()),
-            false,
+            String::from(""),
         )
         .await
         .err()
@@ -257,9 +260,9 @@ mod unitary_specs {
         login_user.password = String::from("teste");
 
         let resp = login_user_service(
-            web::Json(login_user.clone().into()),
+            login_user.clone().into(),
             web::Data::new(PostgresModels::postgres_success()),
-            false,
+            String::from(""),
         )
         .await
         .err()
@@ -299,9 +302,9 @@ mod unitary_specs {
         let login_user = UserModels::login_user_model();
 
         let resp = login_user_service(
-            web::Json(login_user.clone().into()),
+            login_user.clone().into(),
             web::Data::new(PostgresModels::postgres_error()),
-            false,
+            String::from(""),
         )
         .await
         .err()
@@ -430,6 +433,7 @@ mod unitary_specs {
         let resp = detail_user_service(
             web::Data::new(PostgresModels::postgres_success()),
             user.id.clone(),
+            String::from(""),
         )
         .await
         .unwrap();
@@ -458,6 +462,7 @@ mod unitary_specs {
         let resp = detail_user_service(
             web::Data::new(PostgresModels::postgres_success()),
             user.id.clone(),
+            String::from(""),
         )
         .await
         .err()
@@ -489,6 +494,7 @@ mod unitary_specs {
         let resp = detail_user_service(
             web::Data::new(PostgresModels::postgres_error()),
             UserModels::complete_user_model().id.clone(),
+            String::from(""),
         )
         .await
         .err()
@@ -1109,7 +1115,7 @@ mod unitary_specs {
             web::Data::new(queue),
             UserModels::complete_user_model().password,
             user.id,
-            None,
+            String::from(""),
         )
         .await
         .unwrap();
@@ -1143,7 +1149,7 @@ mod unitary_specs {
             web::Data::new(queue),
             UserModels::complete_user_model().password,
             user.id,
-            None,
+            String::from(""),
         )
         .await
         .err()
@@ -1178,7 +1184,7 @@ mod unitary_specs {
             web::Data::new(queue),
             error_password.clone(),
             user.id,
-            None,
+            String::from(""),
         )
         .await
         .err()
@@ -1236,7 +1242,7 @@ mod unitary_specs {
             web::Data::new(queue),
             user.password.clone(),
             user.id,
-            None,
+            String::from(""),
         )
         .await
         .err()
@@ -1328,7 +1334,7 @@ mod unitary_specs {
             web::Data::new(queue),
             put_user_dto.into(),
             user.id.clone(),
-            None,
+            String::from(""),
         )
         .await
         .unwrap();
@@ -1376,7 +1382,7 @@ mod unitary_specs {
             web::Data::new(queue),
             put_user_dto.into(),
             user.id,
-            None,
+            String::from(""),
         )
         .await
         .err()
@@ -1426,7 +1432,7 @@ mod unitary_specs {
             web::Data::new(queue),
             put_user_dto.into(),
             user.id,
-            None,
+            String::from(""),
         )
         .await
         .err()
@@ -1484,7 +1490,7 @@ mod unitary_specs {
             web::Data::new(queue),
             put_user_dto.into(),
             user.id,
-            None,
+            String::from(""),
         )
         .await
         .err()
