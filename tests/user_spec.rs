@@ -1,5 +1,18 @@
 pub mod mocks;
 
+/// # Unitary Specs
+///
+/// Unitary tests for the `modules::user::{user_services, user_repositories, user_providers}` path.
+///
+/// ## Unitary tests that are being tested
+///
+/// - 1 `insert_user_service` & `insert_user_repository` - Check if the user can be inserted in the database
+/// - 2 `detail_user_service` & `detail_user_repository` - Check if the user can be retrieved from the database
+/// - 3 `list_users_service` & `list_users_repository` - Check if the users can be retrieved from the database
+/// - 4 `login_user_service` & `login_user_repository` - Check if the user can be logged in
+/// - 5  `put_user_service` & `put_user_repository` - Check if the user can be updated in the database
+/// - 6 `delete_user_service` & `delete_user_repository` - Check if the user can be deleted in the database
+/// - 7 `user_providers` - Providers from user entity.
 #[cfg(test)]
 mod unitary_specs {
     use crate::mocks::{
@@ -9,7 +22,7 @@ mod unitary_specs {
             postgres::PostgresModels,
             user::{QueryParamsModels, UserModels},
         },
-        structs::user::{MockPutUserDTO, MockUserDTO},
+        structs::user::MockUserDTO,
     };
     use actix_web::{
         body, test,
@@ -33,6 +46,12 @@ mod unitary_specs {
     };
     use std::sync::Arc;
 
+    /// # Insert User Service
+    /// Test to check if the user has valid (`InsertUserDTO`) and returned the complete data (`UserDTO`).
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user is valid (`InsertUserDTO`) and returned its complete version (`UserDTO`).
     #[test]
     async fn _insert_user_service() {
         dotenv::dotenv().ok();
@@ -67,8 +86,15 @@ mod unitary_specs {
         assert!(resp.updated_at.is_none());
     }
 
+    /// # Insert User Service Error Conflict
+    /// Test to check if the user has valid (`InsertUserDTO`), but conflicted in the database.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user is valid (`InsertUserDTO`), but conflicted in the database.
+    /// - The response status is 409, and the response body (`HttpResponse`) contains the error message.
     #[test]
-    async fn _insert_user_service_conflict_error_service_unavailable() {
+    async fn _insert_user_service_error_conflict() {
         dotenv::dotenv().ok();
 
         let queue = Arc::new(InsertUserAppQueue::new());
@@ -102,6 +128,13 @@ mod unitary_specs {
         .await;
     }
 
+    /// # Insert User Service Error Service Unavailable
+    /// Test to check if the user has valid (`InsertUserDTO`), but the database is unavailable.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user is valid (`InsertUserDTO`), but the database is unavailable.
+    /// - The response status is 503, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _insert_user_service_error_service_unavailable() {
         dotenv::dotenv().ok();
@@ -135,6 +168,12 @@ mod unitary_specs {
         .await;
     }
 
+    /// # Insert User Repository
+    /// Test to check if the user (`InsertUserDTO`) has been sended to queue and return a complete user (`UserDTO).
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user has been sended to queue and a complete user (`UserDTO`) is returned.
     #[test]
     async fn _insert_user_repository() {
         dotenv::dotenv().ok();
@@ -162,6 +201,12 @@ mod unitary_specs {
         assert!(resp.updated_at.is_none());
     }
 
+    /// # Login User Service
+    /// Test to check if the user has valid (`LoginUserDTO`) and return a login response (`LoginUserServiceResponse`).
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user is valid (`LoginUserDTO`), and a login response (`LoginUserServiceResponse`) is returned.
     #[test]
     async fn _login_user_service() {
         dotenv::dotenv().ok();
@@ -220,6 +265,13 @@ mod unitary_specs {
         .await;
     }
 
+    /// # Login User Service Error Not Found
+    /// Test to check if the user has valid (`LoginUserDTO`), but not found in the database.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user is valid (`LoginUserDTO`), but not found in the database.
+    /// - The responde status is 404, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _login_user_service_error_not_found() {
         dotenv::dotenv().ok();
@@ -244,6 +296,13 @@ mod unitary_specs {
         assert!(FunctionalTester::cant_see_in_database(TablesEnum::Users, "email", None).await);
     }
 
+    /// # Login User Service Error Unauthorized
+    /// Test to check if the user has valid (`LoginUserDTO`), but the user is unauthorized.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user is valid (`LoginUserDTO`), but the user is unauthorized.
+    /// - The responde status is 401, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _login_user_service_error_unauthorized() {
         dotenv::dotenv().ok();
@@ -287,6 +346,13 @@ mod unitary_specs {
         .await;
     }
 
+    /// # Login User Service Error Service Unavailable
+    /// Test to check if the user has valid (`LoginUserDTO`), but the database is unavailable.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user is valid (`LoginUserDTO`), but the database is unavailable.
+    /// - The responde status is 503, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _login_user_service_error_service_unavailable() {
         dotenv::dotenv().ok();
@@ -326,6 +392,12 @@ mod unitary_specs {
         .await;
     }
 
+    /// # Login User Repository
+    /// Test to check if the user has valid (`LoginUserDTO`) and return a logged user data (`UserDTO`).
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user is valid (`LoginUserDTO`) and return a logged user data (`UserDTO`).
     #[test]
     async fn _login_user_repository() {
         dotenv::dotenv().ok();
@@ -366,6 +438,13 @@ mod unitary_specs {
         .await;
     }
 
+    /// # Login User Repository Error Not Found
+    /// Test to check if the user has valid (`LoginUserDTO`), but not found in the database.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user is valid (`LoginUserDTO`), but not found in the database.
+    /// - The responde status is 404, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _login_user_repository_error_not_found() {
         dotenv::dotenv().ok();
@@ -399,6 +478,13 @@ mod unitary_specs {
         );
     }
 
+    /// # Login User Repository Error Service Unavailable
+    /// Test to check if the user has valid (`LoginUserDTO`), but the database is unavailable.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user is valid (`LoginUserDTO`), but the database is unavailable.
+    /// - The responde status is 503, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _login_user_repository_error_service_unavailable() {
         dotenv::dotenv().ok();
@@ -422,6 +508,12 @@ mod unitary_specs {
         assert!(bytes.contains("service unavailable"));
     }
 
+    /// # Detail User Service
+    /// Test to check if the user_id return a user data (`UserDTO`).
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user_id returned a user data (`UserDTO`).
     #[test]
     async fn _detail_user_service() {
         dotenv::dotenv().ok();
@@ -453,6 +545,13 @@ mod unitary_specs {
         .await;
     }
 
+    /// # Detail User Service Error Not Found
+    /// Test to check if the user_id not found any data in the database.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user_id not found any data in the database.
+    /// - The responde status is 404, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _detail_user_service_error_not_found() {
         dotenv::dotenv().ok();
@@ -487,6 +586,13 @@ mod unitary_specs {
         );
     }
 
+    /// # Detail User Service Error Service Unavailable
+    /// Test to check if the user_id would return a user data (`UserDTO`), but the database is unavailable.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user_id would return a user data (`UserDTO`), but the database is unavailable.
+    /// - The responde status is 503, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _detail_user_service_error_service_unavailable() {
         dotenv::dotenv().ok();
@@ -509,6 +615,12 @@ mod unitary_specs {
         assert!(bytes.contains("service unavailable"));
     }
 
+    /// # Detail User Repository
+    /// Test to check if the user_id return a user data (`UserDTO`).
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user_id returned a user data (`UserDTO`).
     #[test]
     async fn _detail_user_repository() {
         dotenv::dotenv().ok();
@@ -539,6 +651,13 @@ mod unitary_specs {
         .await;
     }
 
+    /// # Detail User Repository Error Not Found
+    /// Test to check if the user_id not found any data in the database.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user_id not found any data in the database.
+    /// - The responde status is 404, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _detail_user_repository_error_not_found() {
         dotenv::dotenv().ok();
@@ -565,6 +684,13 @@ mod unitary_specs {
         assert!(FunctionalTester::cant_see_in_database(TablesEnum::Users, "email", None).await);
     }
 
+    /// # Detail User Repository Error Service Unavailable
+    /// Test to check if the user_id would return a user data (`UserDTO`), but the database is unavailable.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user_id would return a user data (`UserDTO`), but the database is unavailable.
+    /// - The responde status is 503, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _detail_user_repository_error_service_unavailable() {
         dotenv::dotenv().ok();
@@ -588,6 +714,12 @@ mod unitary_specs {
         assert!(bytes.contains("service unavailable"));
     }
 
+    /// # List Users Service
+    /// Test to check if the database return the users in the database in the correct order.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The database return the users in the database in the correct order.
     #[test]
     async fn _list_users_service() {
         dotenv::dotenv().ok();
@@ -628,6 +760,12 @@ mod unitary_specs {
         }
     }
 
+    /// # List Users Service Offset Query Params
+    /// Test to check if the database return the users in the database in the correct order and quantity (using the offset query params `QueryParams`).
+    ///
+    /// ### Result Expected
+    ///
+    /// - The database return the users in the database and in the correct order and quantity.
     #[test]
     async fn _list_users_service_offset_query_params() {
         dotenv::dotenv().ok();
@@ -674,6 +812,12 @@ mod unitary_specs {
         }
     }
 
+    /// # List Users Service Limit Query Params
+    /// Test to check if the database return the users in the database in the correct order and quantity (using the limit query params `QueryParams`).
+    ///
+    /// ### Result Expected
+    ///
+    /// - The database return the users in the database in the correct order and quantity.
     #[test]
     async fn _list_users_service_limit_query_params() {
         dotenv::dotenv().ok();
@@ -720,6 +864,12 @@ mod unitary_specs {
         }
     }
 
+    /// # List Users Service Order By Query Params
+    /// Test to check if the database return the users in the database in the correct order (using the order_by query params `QueryParams`).
+    ///
+    /// ### Result Expected
+    ///
+    /// - The database return the users in the database in the correct order.
     #[test]
     async fn _list_users_service_order_by_query_params() {
         dotenv::dotenv().ok();
@@ -759,6 +909,12 @@ mod unitary_specs {
         }
     }
 
+    /// # List Users Service Order Direction Query Params
+    /// Test to check if the database return the users in the database in the correct order direction (using the order_direction query params `QueryParams`).
+    ///
+    /// ### Result Expected
+    ///
+    /// - The database return the users in the database in the correct order direction.
     #[test]
     async fn _list_users_service_order_direction_query_params() {
         dotenv::dotenv().ok();
@@ -798,6 +954,13 @@ mod unitary_specs {
         }
     }
 
+    /// # List Users Service Error Service Unavailable
+    /// Test to check if the database is unavailable.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The database is unavailable.
+    /// - The response status is 503, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _list_users_service_error_service_unavailable() {
         dotenv::dotenv().ok();
@@ -819,6 +982,13 @@ mod unitary_specs {
         assert!(bytes.contains("service unavailable"));
     }
 
+    /// # List Users Service Error Not Found
+    /// Test to check if the users has not been found in the database.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The users has not been found in the database.
+    /// - The responde status is 404, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _list_users_service_error_not_found() {
         dotenv::dotenv().ok();
@@ -843,6 +1013,12 @@ mod unitary_specs {
         assert!(FunctionalTester::cant_see_in_database(TablesEnum::Users, "email", None).await);
     }
 
+    /// # List Users Repository
+    /// Test to check if the database return the users in the database in the correct order.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The database return the users in the database in the correct order.
     #[test]
     async fn _list_users_repository() {
         dotenv::dotenv().ok();
@@ -883,6 +1059,12 @@ mod unitary_specs {
         }
     }
 
+    /// # List Users Repository Offset Query Params
+    /// Test to check if the database return the users in the database in the correct order and quantity (using the offset query params `QueryParams`).
+    ///
+    /// ### Result Expected
+    ///
+    /// - The database return the users in the database in the correct order and quantity.
     #[test]
     async fn _list_users_repository_offset_query_params() {
         dotenv::dotenv().ok();
@@ -929,6 +1111,12 @@ mod unitary_specs {
         }
     }
 
+    /// # List Users Repository Limit Query Params
+    /// Test to check if the database return the users in the database in the correct order and quantity (using the limit query params `QueryParams`).
+    ///
+    /// ### Result Expected
+    ///
+    /// - The database return the users in the database in the correct order and quantity.
     #[test]
     async fn _list_users_repository_limit_query_params() {
         dotenv::dotenv().ok();
@@ -975,6 +1163,12 @@ mod unitary_specs {
         }
     }
 
+    /// # List Users Repository Order By Query Params
+    /// Test to check if the database return the users in the database in the correct order (using the order_by query params `QueryParams`).
+    ///
+    /// ### Result Expected
+    ///
+    /// - The database return the users in the database in the correct order.
     #[test]
     async fn _list_users_repository_order_by_query_params() {
         dotenv::dotenv().ok();
@@ -1014,6 +1208,12 @@ mod unitary_specs {
         }
     }
 
+    /// # List Users Repository Order Direction Query Params
+    /// Test to check if the database return the users in the database in the correct order (using the order_direction query params `QueryParams`).
+    ///
+    /// ### Result Expected
+    ///
+    /// - The database return the users in the database in the correct order.
     #[test]
     async fn _list_users_repository_order_direction_query_params() {
         dotenv::dotenv().ok();
@@ -1053,6 +1253,13 @@ mod unitary_specs {
         }
     }
 
+    /// # List Users Repository Repository Error Service Unavailable
+    /// Test to check if the database is unavailable.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The database is unavailable.
+    /// - The responde status is 503, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _list_users_repository_error_service_unavailable() {
         dotenv::dotenv().ok();
@@ -1074,6 +1281,13 @@ mod unitary_specs {
         assert!(bytes.contains("service unavailable"));
     }
 
+    /// # List Users Repository Service Error Not Found
+    /// Test to check if the users has not been found in the database.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The users has not been found in the database.
+    /// - The responde status is 404, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _list_users_repository_error_not_found() {
         dotenv::dotenv().ok();
@@ -1098,6 +1312,12 @@ mod unitary_specs {
         assert!(FunctionalTester::cant_see_in_database(TablesEnum::Users, "email", None).await);
     }
 
+    /// # Delete User Service
+    /// Test to check if the data (`user_id` & `user_password`) is valid (`String`, `String`) and the user has been deleted from the database.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The data (`user_id` & `user_password`) is valid (`String`, `String`) and the user has been deleted from the database.
     #[test]
     async fn _delete_user_service() {
         dotenv::dotenv().ok();
@@ -1130,6 +1350,13 @@ mod unitary_specs {
         .await;
     }
 
+    /// # Delete User Service Error Not Found
+    /// Test to check if if the data (`user_id` & `user_password`) is valid (`String`, `String`), but the user has not been found in the database.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The the data (`user_id` & `user_password`) is valid (`String`, `String`), but the user has not been found in the database.
+    /// - The responde status is 404, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _delete_user_service_error_not_found() {
         dotenv::dotenv().ok();
@@ -1165,6 +1392,13 @@ mod unitary_specs {
         assert!(bytes.contains("Não foi encontrado um usuário com este id."));
     }
 
+    /// # Delete User Service Error Unauthorized
+    /// Test to check if the data (`user_id` & `user_password`) is valid (`String`, `String`), but the user is unauthorized.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The data (`user_id` & `user_password`) is valid (`String`, `String`), but the user is unauthorized.
+    /// - The responde status is 401, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _delete_user_service_error_unauthorized() {
         dotenv::dotenv().ok();
@@ -1225,6 +1459,13 @@ mod unitary_specs {
         .await;
     }
 
+    /// # Delete User Service Error Service Unavailable
+    /// Test to check if the database service is unavailable.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The database service is unavailable.
+    /// - The responde status is 503, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _delete_user_service_error_service_unavailable() {
         dotenv::dotenv().ok();
@@ -1281,6 +1522,12 @@ mod unitary_specs {
         .await;
     }
 
+    /// # Delete User Repository
+    /// Test to check if the user_id has been sended to queue and user is deleted from database.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user_id has been sended to queue and user is deleted from database.
     #[test]
     async fn _delete_user_repository() {
         dotenv::dotenv().ok();
@@ -1307,6 +1554,12 @@ mod unitary_specs {
         .await;
     }
 
+    /// # Put User Service
+    /// Test to check if the data is valid (`PutUserDTO`) and user is updated in database.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The data is valid (`PutUserDTO`) and user is updated in database.
     #[test]
     async fn _put_user_service() {
         dotenv::dotenv().ok();
@@ -1319,20 +1572,12 @@ mod unitary_specs {
         FunctionalTester::insert_in_db_users(user.clone()).await;
         FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
 
-        let new_email = String::from("bush1d3v2@gmail.com");
-        let new_password = String::from("123456789%");
-
-        let put_user_dto = MockPutUserDTO {
-            password: UserModels::complete_user_model().password,
-            email: UserModels::complete_user_model_hashed().email,
-            new_password: new_password.clone(),
-            new_email: new_email.clone(),
-        };
+        let put_user_dto = UserModels::put_user_model();
 
         let resp = put_user_service(
             web::Data::new(PostgresModels::postgres_success()),
             web::Data::new(queue),
-            put_user_dto.into(),
+            put_user_dto.clone().into(),
             user.id.clone(),
             String::from(""),
         )
@@ -1341,7 +1586,7 @@ mod unitary_specs {
 
         assert_eq!(resp.id, user.id);
         assert_eq!(resp.name, user.name);
-        assert_eq!(resp.email, new_email);
+        assert_eq!(resp.email, put_user_dto.new_email);
         assert_eq!(
             resp.created_at.chars().take(10).collect::<String>(),
             user.created_at.chars().take(10).collect::<String>()
@@ -1355,6 +1600,13 @@ mod unitary_specs {
         .await;
     }
 
+    /// # Put User Service Error Forbidden
+    /// Test to check if the data is valid (`PutUserDTO`), but the user is forbidden.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The data is valid (`PutUserDTO`), but the user is forbidden.
+    /// - The responde status is 403, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _put_user_service_error_forbidden() {
         dotenv::dotenv().ok();
@@ -1367,15 +1619,8 @@ mod unitary_specs {
         FunctionalTester::insert_in_db_users(user.clone()).await;
         FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
 
-        let new_email = String::from("bush1d3v2@gmail.com");
-        let new_password = String::from("123456789%");
-
-        let put_user_dto = MockPutUserDTO {
-            password: UserModels::complete_user_model().password,
-            email: String::from("bush1d3v2@gmail.com"),
-            new_password,
-            new_email: new_email.clone(),
-        };
+        let mut put_user_dto = UserModels::put_user_model();
+        put_user_dto.email = put_user_dto.new_email.clone();
 
         let resp = put_user_service(
             web::Data::new(PostgresModels::postgres_success()),
@@ -1405,6 +1650,13 @@ mod unitary_specs {
         .await;
     }
 
+    /// # Put User Service Error Unauthorized
+    /// Test to check if the data is valid (`PutUserDTO`), but the user is unauthorized.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The data is valid (`PutUserDTO`), but the user is unauthorized.
+    /// - The responde status is 401, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _put_user_service_error_unauthorized() {
         dotenv::dotenv().ok();
@@ -1417,20 +1669,13 @@ mod unitary_specs {
         FunctionalTester::insert_in_db_users(user.clone()).await;
         FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
 
-        let new_email = String::from("bush1d3v2@gmail.com");
-        let new_password = String::from("123456789%");
-
-        let put_user_dto = MockPutUserDTO {
-            password: UserModels::complete_user_model().password + "1",
-            email: UserModels::complete_user_model_hashed().email,
-            new_password,
-            new_email: new_email.clone(),
-        };
+        let mut put_user_dto = UserModels::put_user_model();
+        put_user_dto.password = put_user_dto.new_password.clone();
 
         let resp = put_user_service(
             web::Data::new(PostgresModels::postgres_success()),
             web::Data::new(queue),
-            put_user_dto.into(),
+            put_user_dto.clone().into(),
             user.id,
             String::from(""),
         )
@@ -1451,7 +1696,7 @@ mod unitary_specs {
             FunctionalTester::cant_see_in_database(
                 TablesEnum::Users,
                 "email",
-                Some(vec![("email", &new_email)]),
+                Some(vec![("email", &put_user_dto.new_email)]),
             )
             .await
         );
@@ -1464,6 +1709,13 @@ mod unitary_specs {
         .await;
     }
 
+    /// # Put User Service Error Conflict
+    /// Test to check if the data is valid (`PutUserDTO`), but conflicted in the database.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The data is valid (`PutUserDTO`), but conflicted in the database.
+    /// - The responde status is 409, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _put_user_service_error_conflict() {
         dotenv::dotenv().ok();
@@ -1476,14 +1728,8 @@ mod unitary_specs {
         FunctionalTester::insert_in_db_users(user.clone()).await;
         FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
 
-        let new_password = String::from("123456789%");
-
-        let put_user_dto = MockPutUserDTO {
-            password: UserModels::complete_user_model().password,
-            email: UserModels::complete_user_model_hashed().email,
-            new_password,
-            new_email: UserModels::complete_user_model_hashed().email,
-        };
+        let mut put_user_dto = UserModels::put_user_model();
+        put_user_dto.new_email = user.email.clone();
 
         let resp = put_user_service(
             web::Data::new(PostgresModels::postgres_success()),
@@ -1522,6 +1768,12 @@ mod unitary_specs {
         .await;
     }
 
+    /// # Put User Repository
+    /// Test to check if the user is updated in database.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user is updated in database.
     #[test]
     async fn _put_user_repository() {
         dotenv::dotenv().ok();
@@ -1534,15 +1786,7 @@ mod unitary_specs {
         FunctionalTester::insert_in_db_users(user.clone()).await;
         FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
 
-        let new_email = String::from("bush1d3v2@gmail.com");
-        let new_password = String::from("123456789%");
-
-        let put_user_dto = MockPutUserDTO {
-            password: UserModels::complete_user_model().password,
-            email: UserModels::complete_user_model_hashed().email,
-            new_password,
-            new_email: new_email.clone(),
-        };
+        let put_user_dto = UserModels::put_user_model();
 
         let resp = put_user_repository(
             web::Data::new(queue),
@@ -1562,6 +1806,13 @@ mod unitary_specs {
         .await;
     }
 
+    /// # Email Exists Provider
+    /// Test to check if the email already exists in database.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The email already exists in database.
+    /// - The status code is 409, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _email_exists_provider() {
         dotenv::dotenv().ok();
@@ -1592,6 +1843,13 @@ mod unitary_specs {
         .await;
     }
 
+    /// # Email exists provider error service unavailable.
+    /// Test to check if the database service is unavailable.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The database service is unavailable.
+    /// - The responde status is 503, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _email_exists_provider_error_service_unavailable() {
         dotenv::dotenv().ok();
@@ -1630,6 +1888,13 @@ mod unitary_specs {
         .await;
     }
 
+    /// # Email not exists provider.
+    /// Test to check if the email not exists in database.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The email not exists in database.
+    /// - The status code is 404, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _email_not_exists_provider() {
         dotenv::dotenv().ok();
@@ -1663,6 +1928,13 @@ mod unitary_specs {
         );
     }
 
+    /// # Email not exists provider error service unavailable
+    /// Test to check if the database service is unavailable.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The database service is unavailable.
+    /// - The responde status is 503, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _email_not_exists_provider_error_service_unavailable() {
         dotenv::dotenv().ok();
@@ -1687,6 +1959,18 @@ mod unitary_specs {
     }
 }
 
+/// # Integration Specs
+///
+/// Integration tests for the `modules::user::user_controllers` path.
+///
+/// ## Integration tests that are being tested
+///
+/// - 1 `insert_user` - Check if the user can be inserted in the database
+/// - 2 `detail_user` - Check if the user can be retrieved from the database
+/// - 3 `list_users` - Check if the users can be retrieved from the database
+/// - 4 `login_user` - Check if the user can be logged in
+/// - 5  `put_user` - Check if the user can be updated in the database
+/// - 6 `delete_user` - Check if the user can be deleted in the database
 #[cfg(test)]
 mod integration_specs {
     use crate::mocks::{
@@ -1724,6 +2008,9 @@ mod integration_specs {
     use std::sync::Arc;
     use tokio::time::{sleep, Duration};
 
+    /// # UserTypes
+    ///
+    /// Enum of the body types received on the related requests.
     pub enum UserTypes {
         InsertUserDTO(MockUserDTO),
         LoginUserDTO(MockLoginUserDTO),
@@ -1733,15 +2020,17 @@ mod integration_specs {
         PutUserDTO(MockPutUserDTO, Option<String>, Option<String>),
     }
 
+    /// # User Call Http Before
+    ///
+    /// Configure the test server to call the related requests and return the responses.
     async fn user_call_http_before(user: UserTypes, pool_error: bool) -> ServiceResponse {
         dotenv::dotenv().ok();
-        let redis_pool = RedisModels::pool_success().await;
-        let pool;
-        if pool_error {
-            pool = PostgresModels::postgres_error();
+        let redis_pool = RedisModels::redis_success().await;
+        let pool = if pool_error {
+            PostgresModels::postgres_error()
         } else {
-            pool = PostgresModels::postgres_success();
-        }
+            PostgresModels::postgres_success()
+        };
         let insert_pool_async = pool.clone();
         let insert_user_queue = Arc::new(InsertUserAppQueue::new());
         let insert_user_queue_async = insert_user_queue.clone();
@@ -1828,7 +2117,7 @@ mod integration_specs {
             }
             UserTypes::PutUserDTO(body, user_id, jwt) => {
                 let id = user_id.clone().unwrap_or(String::from("123456"));
-                let mut request = test::TestRequest::put()
+                let mut request: test::TestRequest = test::TestRequest::put()
                     .uri(&format!("/user/{}", id))
                     .set_json(body);
 
@@ -1843,6 +2132,13 @@ mod integration_specs {
         test::call_service(&app, req).await
     }
 
+    /// # Insert User
+    /// Test to check if the user has valid (`InsertUserDTO`) and returned the complete data (`UserDTO`).
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user is valid (`InsertUserDTO`) and returned its complete version (`UserDTO`).
+    /// - The response status is 201, and the response body (`HttpResponse`) is empty.
     #[test]
     async fn _insert_user() {
         let user = UserModels::complete_user_model();
@@ -1888,10 +2184,17 @@ mod integration_specs {
         .await;
     }
 
+    /// # Insert User Error Name Length
+    /// Test to check if the user has invalid (`InsertUserDTO`) and returned the error message.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user is invalid (`InsertUserDTO`) and returned the error message.
+    /// - The response status is 400, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _insert_user_error_name_length() {
         let mut user = UserModels::complete_user_model();
-        user.name = String::from("");
+        user.name = String::from("v");
 
         let resp = user_call_http_before(UserTypes::InsertUserDTO(user.clone()), false).await;
 
@@ -1913,6 +2216,13 @@ mod integration_specs {
         );
     }
 
+    /// # Insert User Error Name Regex
+    /// Test to check if the user has invalid (`InsertUserDTO`) and returned the error message.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user is invalid (`InsertUserDTO`) and returned the error message.
+    /// - The response status is 400, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _insert_user_error_name_regex() {
         let mut user = UserModels::complete_user_model();
@@ -1920,7 +2230,7 @@ mod integration_specs {
 
         let resp = user_call_http_before(UserTypes::InsertUserDTO(user.clone()), false).await;
 
-        assert_eq!(resp.status(), 400);
+        assert_eq!(resp.status(), 422);
 
         let bytes =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
@@ -1938,10 +2248,17 @@ mod integration_specs {
         );
     }
 
+    /// # Insert User Error Email Length
+    /// Test to check if the user has invalid (`InsertUserDTO`) and returned the error message.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user is invalid (`InsertUserDTO`) and returned the error message.
+    /// - The response status is 400, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _insert_user_error_email_length() {
         let mut user = UserModels::complete_user_model();
-        user.email = String::from("");
+        user.email = String::from("v@i.com");
 
         let resp = user_call_http_before(UserTypes::InsertUserDTO(user.clone()), false).await;
 
@@ -1963,6 +2280,13 @@ mod integration_specs {
         );
     }
 
+    /// # Insert User Error Email Regex
+    /// Test to check if the user has invalid (`InsertUserDTO`) and returned the error message.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user is invalid (`InsertUserDTO`) and returned the error message.
+    /// - The response status is 400, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _insert_user_error_email_regex() {
         let mut user = UserModels::complete_user_model();
@@ -1970,7 +2294,7 @@ mod integration_specs {
 
         let resp = user_call_http_before(UserTypes::InsertUserDTO(user.clone()), false).await;
 
-        assert_eq!(resp.status(), 400);
+        assert_eq!(resp.status(), 422);
 
         let bytes =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
@@ -1988,6 +2312,13 @@ mod integration_specs {
         );
     }
 
+    /// # Insert User Error Email Conflict DB
+    /// Test to check if the user has valid (`InsertUserDTO`), but conflicted in the database.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user is valid (`InsertUserDTO`), but conflicted in the database.
+    /// - The response status is 409, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _insert_user_error_email_conflict_db() {
         dotenv::dotenv().ok();
@@ -2023,6 +2354,13 @@ mod integration_specs {
         .await;
     }
 
+    /// # Insert User Error Password Length
+    /// Test to check if the user has invalid (`InsertUserDTO`) and returned the error message.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user is invalid (`InsertUserDTO`) and returned the error message.
+    /// - The response status is 400, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _insert_user_error_password_length() {
         let mut user = UserModels::complete_user_model();
@@ -2048,6 +2386,13 @@ mod integration_specs {
         );
     }
 
+    /// # Insert User Error Password Regex
+    /// Test to check if the user has invalid (`InsertUserDTO`) and returned the error message.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user is invalid (`InsertUserDTO`) and returned the error message.
+    /// - The response status is 400, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _insert_user_error_password_regex() {
         let mut user = UserModels::complete_user_model();
@@ -2055,7 +2400,7 @@ mod integration_specs {
 
         let resp = user_call_http_before(UserTypes::InsertUserDTO(user.clone()), false).await;
 
-        assert_eq!(resp.status(), 400);
+        assert_eq!(resp.status(), 422);
 
         let bytes =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
@@ -2073,6 +2418,13 @@ mod integration_specs {
         );
     }
 
+    /// # Insert User Error Service Unavailable
+    /// Test to check if the user has valid (`InsertUserDTO`), but the database service is unavailable.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user is valid (`InsertUserDTO`), but the database service is unavailable.
+    /// - The response status is 503, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _insert_user_error_service_unavailable() {
         dotenv::dotenv().ok();
@@ -2099,6 +2451,13 @@ mod integration_specs {
         );
     }
 
+    /// # Login User
+    /// Test to check if the user has valid (`LoginUserDTO`), and returned the access and refresh tokens.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user is valid (`LoginUserDTO`), and returned the access and refresh tokens.
+    /// - The response status is 200, and the response body (`HttpResponse`) contains the access and refresh tokens.
     #[test]
     async fn _login_user() {
         dotenv::dotenv().ok();
@@ -2154,6 +2513,13 @@ mod integration_specs {
         .await;
     }
 
+    /// # Login User Error Email Regex
+    /// Test to check if the user has invalid (`LoginUserDTO`) and returned the error message.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user is invalid (`LoginUserDTO`) and returned the error message.
+    /// - The response status is 400, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _login_user_error_email_regex() {
         dotenv::dotenv().ok();
@@ -2166,7 +2532,7 @@ mod integration_specs {
 
         let resp = user_call_http_before(UserTypes::LoginUserDTO(login_user), false).await;
 
-        assert_eq!(resp.status(), 400);
+        assert_eq!(resp.status(), 422);
 
         let bytes =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
@@ -2180,6 +2546,13 @@ mod integration_specs {
         .await;
     }
 
+    /// # Login User Error Email Length
+    /// Test to check if the user has invalid (`LoginUserDTO`) and returned the error message.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user is invalid (`LoginUserDTO`) and returned the error message.
+    /// - The response status is 400, and the response body (`HttpResponse`) contains the error
     #[test]
     async fn _login_user_error_email_length() {
         dotenv::dotenv().ok();
@@ -2188,7 +2561,7 @@ mod integration_specs {
         FunctionalTester::insert_in_db_users(insert_user.clone()).await;
 
         let mut login_user = UserModels::login_user_model();
-        login_user.email = String::from("");
+        login_user.email = String::from("v@i.com");
 
         let resp = user_call_http_before(UserTypes::LoginUserDTO(login_user), false).await;
 
@@ -2206,6 +2579,13 @@ mod integration_specs {
         .await;
     }
 
+    /// # Login User Error Email Not Found
+    /// Test to check if the user has valid (`LoginUserDTO`), but not found in the database.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user is valid (`LoginUserDTO`), but not found in the database.
+    /// - The responde status is 404, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _login_user_error_email_not_found() {
         dotenv::dotenv().ok();
@@ -2232,6 +2612,13 @@ mod integration_specs {
         .await;
     }
 
+    /// # Login User Error Password Length
+    /// Test to check if the user has invalid (`LoginUserDTO`) and returned the error message.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user is invalid (`LoginUserDTO`) and returned the error message.
+    /// - The response status is 400, and the response body (`HttpResponse`) contains the error
     #[test]
     async fn _login_user_error_password_length() {
         dotenv::dotenv().ok();
@@ -2240,7 +2627,7 @@ mod integration_specs {
         FunctionalTester::insert_in_db_users(insert_user.clone()).await;
 
         let mut login_user = UserModels::login_user_model();
-        login_user.password = String::from("1234567");
+        login_user.password = String::from("123456%");
 
         let resp = user_call_http_before(UserTypes::LoginUserDTO(login_user), false).await;
 
@@ -2258,6 +2645,13 @@ mod integration_specs {
         .await;
     }
 
+    /// # Login User Error Password Regex
+    /// Test to check if the user has invalid (`LoginUserDTO`) and returned the error message.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user is invalid (`LoginUserDTO`) and returned the error message.
+    /// - The response status is 400, and the response body (`HttpResponse`) contains the error
     #[test]
     async fn _login_user_error_password_regex() {
         dotenv::dotenv().ok();
@@ -2270,7 +2664,7 @@ mod integration_specs {
 
         let resp = user_call_http_before(UserTypes::LoginUserDTO(login_user), false).await;
 
-        assert_eq!(resp.status(), 400);
+        assert_eq!(resp.status(), 422);
 
         let bytes =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
@@ -2284,6 +2678,13 @@ mod integration_specs {
         .await;
     }
 
+    /// # Login User Error Unauthorized
+    /// Test to check if the user has valid (`LoginUserDTO`), but the user is unauthorized.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user is valid (`LoginUserDTO`), but the user is unauthorized.
+    /// - The responde status is 401, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _login_user_error_unauthorized() {
         dotenv::dotenv().ok();
@@ -2324,6 +2725,13 @@ mod integration_specs {
         .await;
     }
 
+    /// # Login User Error Service Unavailable
+    /// Test to check if the user has valid (`LoginUserDTO`), but the database is unavailable.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user is valid (`LoginUserDTO`), but the database is unavailable.
+    /// - The responde status is 503, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _login_user_error_service_unavailable() {
         dotenv::dotenv().ok();
@@ -2349,6 +2757,13 @@ mod integration_specs {
         .await;
     }
 
+    /// # Detail User
+    /// Test to check if the user_id return a user data (`UserDTO`).
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user_id returned a user data (`UserDTO`).
+    /// - The response status is 200, and the response body (`HttpResponse`) contains the user.
     #[test]
     async fn _detail_user() {
         dotenv::dotenv().ok();
@@ -2388,6 +2803,13 @@ mod integration_specs {
         .await;
     }
 
+    /// # Detail User Error Service Unavailable
+    /// Test to check if the user_id would return a user data (`UserDTO`), but the database is unavailable.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user_id would return a user data (`UserDTO`), but the database is unavailable.
+    /// - The responde status is 503, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _detail_user_error_service_unavailable() {
         dotenv::dotenv().ok();
@@ -2418,6 +2840,13 @@ mod integration_specs {
         .await;
     }
 
+    /// # Detail User Refresh Token Error
+    /// Test to check if the user_id would return a user data (`UserDTO`), but the jwt token is invalid.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user_id would return a user data (`UserDTO`), but the jwt token is invalid.
+    /// - The responde status is 400, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _detail_user_refresh_token_error() {
         dotenv::dotenv().ok();
@@ -2447,6 +2876,13 @@ mod integration_specs {
         .await;
     }
 
+    /// # Detail User JWT Error Unauthorized
+    /// Test to check if the user is unauthorized.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user is unauthorized.
+    /// - The responde status is 401, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _detail_user_jwt_error_unauthorized() {
         dotenv::dotenv().ok();
@@ -2477,6 +2913,13 @@ mod integration_specs {
         .await;
     }
 
+    /// # Detail User Error UUID Path Type Value
+    /// Test to check if the user_id is invalid.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user_id is invalid.
+    /// - The responde status is 400, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _detail_user_error_uuid_path_type_value() {
         dotenv::dotenv().ok();
@@ -2508,6 +2951,13 @@ mod integration_specs {
         .await;
     }
 
+    /// # Detail User Not Found Error
+    /// Test to check if the user_id not found any data in the database.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user_id not found any data in the database.
+    /// - The responde status is 404, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _detail_user_not_found_error() {
         dotenv::dotenv().ok();
@@ -2533,6 +2983,13 @@ mod integration_specs {
         assert!(FunctionalTester::cant_see_in_database(TablesEnum::Users, "email", None).await);
     }
 
+    /// # List Users
+    /// Test to check if the database return the users in the database in the correct order.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The database return the users in the database in the correct order.
+    /// - The responde status is 200, and the response body (`HttpResponse`) contains the users data.
     #[test]
     async fn _list_users() {
         dotenv::dotenv().ok();
@@ -2575,6 +3032,13 @@ mod integration_specs {
         }
     }
 
+    /// # List Users Offset Query Params
+    /// Test to check if the database return the users in the database in the correct order and quantity (using the offset query params `QueryParams`).
+    ///
+    /// ### Result Expected
+    ///
+    /// - The database return the users in the database and in the correct order and quantity.
+    /// - The responde status is 200, and the response body (`HttpResponse`) contains the users data.
     #[test]
     async fn _list_users_offset_query_params() {
         dotenv::dotenv().ok();
@@ -2625,6 +3089,13 @@ mod integration_specs {
         }
     }
 
+    /// # List Users Limit Query Params
+    /// Test to check if the database return the users in the database in the correct order and quantity (using the limit query params `QueryParams`).
+    ///
+    /// ### Result Expected
+    ///
+    /// - The database return the users in the database in the correct order and quantity.
+    /// - The responde status is 200, and the response body (`HttpResponse`) contains the users data.
     #[test]
     async fn _list_users_limit_query_params() {
         dotenv::dotenv().ok();
@@ -2675,6 +3146,13 @@ mod integration_specs {
         }
     }
 
+    /// # List Users Order By Query Params
+    /// Test to check if the database return the users in the database in the correct order (using the order_by query params `QueryParams`).
+    ///
+    /// ### Result Expected
+    ///
+    /// - The database return the users in the database in the correct order.
+    /// - The responde status is 200, and the response body (`HttpResponse`) contains the users data.
     #[test]
     async fn _list_users_order_by_query_params() {
         dotenv::dotenv().ok();
@@ -2721,6 +3199,13 @@ mod integration_specs {
         }
     }
 
+    /// # List Users Order Direction Query Params
+    /// Test to check if the database return the users in the database in the correct order direction (using the order_direction query params `QueryParams`).
+    ///
+    /// ### Result Expected
+    ///
+    /// - The database return the users in the database in the correct order direction.
+    /// - The responde status is 200, and the response body (`HttpResponse`) contains the users data.
     #[test]
     async fn _list_users_order_direction_query_params() {
         dotenv::dotenv().ok();
@@ -2767,6 +3252,13 @@ mod integration_specs {
         }
     }
 
+    /// # List Users Error Service Unavailable
+    /// Test to check if the database is unavailable.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The database is unavailable.
+    /// - The response status is 503, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _list_users_error_service_unavailable() {
         dotenv::dotenv().ok();
@@ -2798,6 +3290,13 @@ mod integration_specs {
         .await;
     }
 
+    /// # List Users Error Not Found
+    /// Test to check if the users has not been found in the database.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The users has not been found in the database.
+    /// - The responde status is 404, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _list_users_error_not_found() {
         dotenv::dotenv().ok();
@@ -2823,6 +3322,13 @@ mod integration_specs {
         assert!(FunctionalTester::cant_see_in_database(TablesEnum::Users, "email", None).await);
     }
 
+    /// # List Users Error JWT Unauthorized
+    /// Test to check if the user is unauthorized.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user is unauthorized.
+    /// - The response status is 401, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _list_users_error_jwt_unauthorized() {
         dotenv::dotenv().ok();
@@ -2845,6 +3351,13 @@ mod integration_specs {
         assert!(bytes.contains("bearer token"));
     }
 
+    /// # List Users Error JWT Authorization Not Found
+    /// Test to check if the authorization header is not found.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The authorization header is not found.
+    /// - The response status is 400, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _list_users_error_jwt_authorization_not_found() {
         dotenv::dotenv().ok();
@@ -2863,6 +3376,13 @@ mod integration_specs {
         assert!(bytes.contains("O valor do cabeçalho 'Authorization' deve ser informado."));
     }
 
+    /// # Delete User
+    /// Test to check if the response body (`DeleteUserDTO`) is valid and the user is deleted.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The response body (`DeleteUserDTO`) is valid and the user is deleted.
+    /// - The response status is 202, and the response body (`HttpResponse`) is empty.
     #[test]
     async fn _delete_user() {
         dotenv::dotenv().ok();
@@ -2874,9 +3394,7 @@ mod integration_specs {
         FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
 
         let jwt = JwtModels::access_jwt_model(user.id.clone());
-        let delete_user_dto = MockDeleteUserDTO {
-            password: UserModels::complete_user_model().password,
-        };
+        let delete_user_dto = UserModels::delete_user_model();
         let resp = user_call_http_before(
             UserTypes::DeleteUserDTO(delete_user_dto, Some(user.id.clone()), Some(jwt)),
             false,
@@ -2910,6 +3428,13 @@ mod integration_specs {
         );
     }
 
+    /// # Delete User Error Password Regex
+    /// Test to check if the user has invalid (`DeleteUserDTO`) and returned the error message.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user is invalid (`DeleteUserDTO`) and returned the error message.
+    /// - The response status is 400, and the response body (`HttpResponse`) contains the error
     #[test]
     async fn _delete_user_error_password_regex() {
         dotenv::dotenv().ok();
@@ -2930,7 +3455,7 @@ mod integration_specs {
         )
         .await;
 
-        assert_eq!(resp.status(), 400);
+        assert_eq!(resp.status(), 422);
 
         let bytes =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
@@ -2962,6 +3487,13 @@ mod integration_specs {
         .await;
     }
 
+    /// # Delete User Error Password Length
+    /// Test to check if the user has invalid (`DeleteUserDTO`) and returned the error message.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user is invalid (`DeleteUserDTO`) and returned the error message.
+    /// - The response status is 400, and the response body (`HttpResponse`) contains the error
     #[test]
     async fn _delete_user_error_password_length() {
         dotenv::dotenv().ok();
@@ -2974,7 +3506,7 @@ mod integration_specs {
 
         let jwt = JwtModels::access_jwt_model(user.id.clone());
         let delete_user_dto = MockDeleteUserDTO {
-            password: String::from("1234567"),
+            password: String::from("123456%"),
         };
         let resp = user_call_http_before(
             UserTypes::DeleteUserDTO(delete_user_dto, Some(user.id.clone()), Some(jwt)),
@@ -3014,15 +3546,20 @@ mod integration_specs {
         .await;
     }
 
+    /// # Delete User Error JWT Unauthorized
+    /// Test to check if the user is unauthorized.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user is unauthorized.
+    /// - The response status is 401, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _delete_user_error_jwt_unauthorized() {
         dotenv::dotenv().ok();
 
         let user = UserModels::complete_user_model_hashed();
 
-        let delete_user_dto = MockDeleteUserDTO {
-            password: UserModels::complete_user_model().password,
-        };
+        let delete_user_dto = UserModels::delete_user_model();
 
         let jwt = JwtModels::refresh_jwt_model(user.id.clone());
 
@@ -3040,15 +3577,20 @@ mod integration_specs {
         assert!(bytes.contains("bearer token"));
     }
 
+    /// # Delete User Error JWT Authorization Not Found
+    /// Test to check if the authorization header is not found.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The authorization header is not found.
+    /// - The response status is 400, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _delete_user_error_jwt_authorization_not_found() {
         dotenv::dotenv().ok();
 
         let user = UserModels::complete_user_model_hashed();
 
-        let delete_user_dto = MockDeleteUserDTO {
-            password: UserModels::complete_user_model().password,
-        };
+        let delete_user_dto = UserModels::delete_user_model();
 
         let resp = user_call_http_before(
             UserTypes::DeleteUserDTO(delete_user_dto, Some(user.id.clone()), None),
@@ -3064,6 +3606,13 @@ mod integration_specs {
         assert!(bytes.contains("O valor do cabeçalho 'Authorization' deve ser informado."));
     }
 
+    /// # Delete User Error Not Found
+    /// Test to check if the request body is valid (`DeleteUserDTO`) and the user is not found.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The the request body is valid (`DeleteUserDTO`) and the user is not found.
+    /// - The response status is 404, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _delete_user_error_not_found() {
         dotenv::dotenv().ok();
@@ -3071,9 +3620,7 @@ mod integration_specs {
         let user = UserModels::complete_user_model_hashed();
 
         let jwt = JwtModels::access_jwt_model(user.id.clone());
-        let delete_user_dto = MockDeleteUserDTO {
-            password: UserModels::complete_user_model().password,
-        };
+        let delete_user_dto = UserModels::delete_user_model();
         let resp = user_call_http_before(
             UserTypes::DeleteUserDTO(delete_user_dto, Some(user.id.clone()), Some(jwt)),
             false,
@@ -3090,6 +3637,13 @@ mod integration_specs {
         assert!(bytes.contains("Não foi encontrado um usuário com este id."));
     }
 
+    /// # Delete User Error Unauthorized
+    /// Test to check if the request body is valid (`DeleteUserDTO`), but the user is unauthorized.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The request body is valid (`DeleteUserDTO`), but the user is unauthorized.
+    /// - The response status is 401, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _delete_user_error_unauthorized() {
         dotenv::dotenv().ok();
@@ -3148,6 +3702,13 @@ mod integration_specs {
         .await;
     }
 
+    /// # Delete User Error UUID Path Type Value
+    /// Test to check if the user_id is invalid.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user_id is invalid.
+    /// - The responde status is 400, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _delete_user_error_uuid_path_type_value() {
         dotenv::dotenv().ok();
@@ -3159,9 +3720,7 @@ mod integration_specs {
         FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
 
         let jwt = JwtModels::access_jwt_model(user.id.clone());
-        let delete_user_dto = MockDeleteUserDTO {
-            password: UserModels::complete_user_model().password,
-        };
+        let delete_user_dto = UserModels::delete_user_model();
         let resp = user_call_http_before(
             UserTypes::DeleteUserDTO(delete_user_dto, None, Some(jwt)),
             false,
@@ -3201,6 +3760,13 @@ mod integration_specs {
         .await;
     }
 
+    /// # Put User
+    /// Test to check if the request body (`PutUserDTO`) is valid and the user is updated in database.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The request body (`PutUserDTO`) is valid and the user is updated in database.
+    /// - The responde status is 202, and the response body (`HttpResponse`) is empty.
     #[test]
     async fn _put_user() {
         dotenv::dotenv().ok();
@@ -3211,18 +3777,11 @@ mod integration_specs {
         FunctionalTester::insert_in_db_users(user.clone()).await;
         FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
 
-        let new_email = String::from("bush1d3v2@gmail.com");
-        let new_password = String::from("123456789%");
-
         let jwt = JwtModels::access_jwt_model(user.id.clone());
-        let put_user_dto = MockPutUserDTO {
-            password: UserModels::complete_user_model().password,
-            email: UserModels::complete_user_model_hashed().email,
-            new_password,
-            new_email: new_email.clone(),
-        };
+        let put_user_dto = UserModels::put_user_model();
+
         let resp = user_call_http_before(
-            UserTypes::PutUserDTO(put_user_dto, Some(user.id.clone()), Some(jwt)),
+            UserTypes::PutUserDTO(put_user_dto.clone(), Some(user.id.clone()), Some(jwt)),
             false,
         )
         .await;
@@ -3240,7 +3799,7 @@ mod integration_specs {
             FunctionalTester::can_see_in_database(
                 TablesEnum::Users,
                 "email",
-                Some(vec![("email", &new_email.clone())]),
+                Some(vec![("email", &put_user_dto.new_email.clone())]),
             )
             .await
         );
@@ -3248,11 +3807,18 @@ mod integration_specs {
         FunctionalTester::delete_from_database(TablesEnum::Salt, Some(vec![("salt", &salt)])).await;
         FunctionalTester::delete_from_database(
             TablesEnum::Users,
-            Some(vec![("email", &new_email)]),
+            Some(vec![("email", &put_user_dto.new_email)]),
         )
         .await;
     }
 
+    /// # Put User Error Password Length
+    /// Test to check if the user has invalid (`PutUserDTO`) and returned the error message.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user is invalid (`PutUserDTO`) and returned the error message.
+    /// - The response status is 400, and the response body (`HttpResponse`) contains the error
     #[test]
     async fn _put_user_error_password_length() {
         dotenv::dotenv().ok();
@@ -3263,18 +3829,12 @@ mod integration_specs {
         FunctionalTester::insert_in_db_users(user.clone()).await;
         FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
 
-        let new_email = String::from("bush1d3v2@gmail.com");
-        let new_password = String::from("123456789%");
-
         let jwt = JwtModels::access_jwt_model(user.id.clone());
-        let put_user_dto = MockPutUserDTO {
-            password: String::from(""),
-            email: UserModels::complete_user_model_hashed().email,
-            new_password,
-            new_email: new_email.clone(),
-        };
+        let mut put_user_dto = UserModels::put_user_model();
+        put_user_dto.password = String::from("123456%");
+
         let resp = user_call_http_before(
-            UserTypes::PutUserDTO(put_user_dto, Some(user.id.clone()), Some(jwt)),
+            UserTypes::PutUserDTO(put_user_dto.clone(), Some(user.id.clone()), Some(jwt)),
             false,
         )
         .await;
@@ -3290,7 +3850,7 @@ mod integration_specs {
             FunctionalTester::cant_see_in_database(
                 TablesEnum::Users,
                 "email",
-                Some(vec![("email", &new_email)]),
+                Some(vec![("email", &put_user_dto.new_email)]),
             )
             .await
         );
@@ -3303,56 +3863,13 @@ mod integration_specs {
         .await;
     }
 
-    #[test]
-    async fn _put_user_error_password_regex() {
-        dotenv::dotenv().ok();
-
-        let salt = uuid::Uuid::new_v4().to_string();
-        let mut user = UserModels::complete_user_model_hashed();
-        user.password = format!("{}{}", user.password, salt);
-        FunctionalTester::insert_in_db_users(user.clone()).await;
-        FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
-
-        let new_email = String::from("bush1d3v2@gmail.com");
-        let new_password = String::from("123456789%");
-
-        let jwt = JwtModels::access_jwt_model(user.id.clone());
-        let put_user_dto = MockPutUserDTO {
-            password: String::from("12345678"),
-            email: UserModels::complete_user_model_hashed().email,
-            new_password,
-            new_email: new_email.clone(),
-        };
-        let resp = user_call_http_before(
-            UserTypes::PutUserDTO(put_user_dto, Some(user.id.clone()), Some(jwt)),
-            false,
-        )
-        .await;
-
-        assert_eq!(resp.status(), 400);
-
-        let bytes =
-            String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
-
-        assert!(bytes.contains("A senha deve ter pelo menos 1 caractere especial."));
-
-        assert!(
-            FunctionalTester::cant_see_in_database(
-                TablesEnum::Users,
-                "email",
-                Some(vec![("email", &new_email)]),
-            )
-            .await
-        );
-
-        FunctionalTester::delete_from_database(TablesEnum::Salt, Some(vec![("salt", &salt)])).await;
-        FunctionalTester::delete_from_database(
-            TablesEnum::Users,
-            Some(vec![("email", &user.email)]),
-        )
-        .await;
-    }
-
+    /// # Put User Error Email Length
+    /// Test to check if the user has invalid (`PutUserDTO`) and returned the error message.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user is invalid (`PutUserDTO`) and returned the error message.
+    /// - The response status is 400, and the response body (`HttpResponse`) contains the error
     #[test]
     async fn _put_user_error_email_length() {
         dotenv::dotenv().ok();
@@ -3363,18 +3880,12 @@ mod integration_specs {
         FunctionalTester::insert_in_db_users(user.clone()).await;
         FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
 
-        let new_email = String::from("bush1d3v2@gmail.com");
-        let new_password = String::from("123456789%");
-
         let jwt = JwtModels::access_jwt_model(user.id.clone());
-        let put_user_dto = MockPutUserDTO {
-            password: UserModels::complete_user_model_hashed().password,
-            email: String::from(""),
-            new_password,
-            new_email: new_email.clone(),
-        };
+        let mut put_user_dto = UserModels::put_user_model();
+        put_user_dto.email = String::from("v@i.com");
+
         let resp = user_call_http_before(
-            UserTypes::PutUserDTO(put_user_dto, Some(user.id.clone()), Some(jwt)),
+            UserTypes::PutUserDTO(put_user_dto.clone(), Some(user.id.clone()), Some(jwt)),
             false,
         )
         .await;
@@ -3390,7 +3901,7 @@ mod integration_specs {
             FunctionalTester::cant_see_in_database(
                 TablesEnum::Users,
                 "email",
-                Some(vec![("email", &new_email)]),
+                Some(vec![("email", &put_user_dto.new_email)]),
             )
             .await
         );
@@ -3403,6 +3914,13 @@ mod integration_specs {
         .await;
     }
 
+    /// # Put User Error Email Regex
+    /// Test to check if the user has invalid (`PutUserDTO`) and returned the error message.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user is invalid (`PutUserDTO`) and returned the error message.
+    /// - The response status is 400, and the response body (`HttpResponse`) contains the error
     #[test]
     async fn _put_user_error_email_regex() {
         dotenv::dotenv().ok();
@@ -3413,23 +3931,17 @@ mod integration_specs {
         FunctionalTester::insert_in_db_users(user.clone()).await;
         FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
 
-        let new_email = String::from("bush1d3v2@gmail.com");
-        let new_password = String::from("123456789%");
-
         let jwt = JwtModels::access_jwt_model(user.id.clone());
-        let put_user_dto = MockPutUserDTO {
-            password: UserModels::complete_user_model_hashed().password,
-            email: String::from("teste@gmailcom"),
-            new_password,
-            new_email: new_email.clone(),
-        };
+        let mut put_user_dto = UserModels::put_user_model();
+        put_user_dto.email = String::from("teste@gmailcom");
+
         let resp = user_call_http_before(
-            UserTypes::PutUserDTO(put_user_dto, Some(user.id.clone()), Some(jwt)),
+            UserTypes::PutUserDTO(put_user_dto.clone(), Some(user.id.clone()), Some(jwt)),
             false,
         )
         .await;
 
-        assert_eq!(resp.status(), 400);
+        assert_eq!(resp.status(), 422);
 
         let bytes =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
@@ -3440,7 +3952,7 @@ mod integration_specs {
             FunctionalTester::cant_see_in_database(
                 TablesEnum::Users,
                 "email",
-                Some(vec![("email", &new_email)]),
+                Some(vec![("email", &put_user_dto.new_email)]),
             )
             .await
         );
@@ -3453,6 +3965,13 @@ mod integration_specs {
         .await;
     }
 
+    /// # Put User Error New Password Length
+    /// Test to check if the user has invalid (`PutUserDTO`) and returned the error message.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user is invalid (`PutUserDTO`) and returned the error message.
+    /// - The response status is 400, and the response body (`HttpResponse`) contains the error
     #[test]
     async fn _put_user_error_new_password_length() {
         dotenv::dotenv().ok();
@@ -3463,17 +3982,12 @@ mod integration_specs {
         FunctionalTester::insert_in_db_users(user.clone()).await;
         FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
 
-        let new_email = String::from("bush1d3v2@gmail.com");
-
         let jwt = JwtModels::access_jwt_model(user.id.clone());
-        let put_user_dto = MockPutUserDTO {
-            password: UserModels::complete_user_model().password,
-            email: UserModels::complete_user_model_hashed().email,
-            new_password: String::from(""),
-            new_email: new_email.clone(),
-        };
+        let mut put_user_dto = UserModels::put_user_model();
+        put_user_dto.new_password = String::from("123456%");
+
         let resp = user_call_http_before(
-            UserTypes::PutUserDTO(put_user_dto, Some(user.id.clone()), Some(jwt)),
+            UserTypes::PutUserDTO(put_user_dto.clone(), Some(user.id.clone()), Some(jwt)),
             false,
         )
         .await;
@@ -3489,7 +4003,7 @@ mod integration_specs {
             FunctionalTester::cant_see_in_database(
                 TablesEnum::Users,
                 "email",
-                Some(vec![("email", &new_email)]),
+                Some(vec![("email", &put_user_dto.new_email)]),
             )
             .await
         );
@@ -3502,8 +4016,15 @@ mod integration_specs {
         .await;
     }
 
+    /// # Put User Error Password Regex
+    /// Test to check if the user has invalid (`PutUserDTO`) and returned the error message.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user is invalid (`PutUserDTO`) and returned the error message.
+    /// - The response status is 400, and the response body (`HttpResponse`) contains the error
     #[test]
-    async fn _put_user_error_new_password_regex() {
+    async fn _put_user_error_password_regex() {
         dotenv::dotenv().ok();
 
         let salt = uuid::Uuid::new_v4().to_string();
@@ -3512,22 +4033,17 @@ mod integration_specs {
         FunctionalTester::insert_in_db_users(user.clone()).await;
         FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
 
-        let new_email = String::from("bush1d3v2@gmail.com");
-
         let jwt = JwtModels::access_jwt_model(user.id.clone());
-        let put_user_dto = MockPutUserDTO {
-            password: UserModels::complete_user_model().password,
-            email: UserModels::complete_user_model_hashed().email,
-            new_password: String::from("12345678"),
-            new_email: new_email.clone(),
-        };
+        let mut put_user_dto = UserModels::put_user_model();
+        put_user_dto.password = String::from("12345678");
+
         let resp = user_call_http_before(
-            UserTypes::PutUserDTO(put_user_dto, Some(user.id.clone()), Some(jwt)),
+            UserTypes::PutUserDTO(put_user_dto.clone(), Some(user.id.clone()), Some(jwt)),
             false,
         )
         .await;
 
-        assert_eq!(resp.status(), 400);
+        assert_eq!(resp.status(), 422);
 
         let bytes =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
@@ -3538,7 +4054,7 @@ mod integration_specs {
             FunctionalTester::cant_see_in_database(
                 TablesEnum::Users,
                 "email",
-                Some(vec![("email", &new_email)]),
+                Some(vec![("email", &put_user_dto.new_email)]),
             )
             .await
         );
@@ -3551,6 +4067,13 @@ mod integration_specs {
         .await;
     }
 
+    /// # Put User Error New Email Length
+    /// Test to check if the user has invalid (`PutUserDTO`) and returned the error message.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user is invalid (`PutUserDTO`) and returned the error message.
+    /// - The response status is 400, and the response body (`HttpResponse`) contains the error
     #[test]
     async fn _put_user_error_new_email_length() {
         dotenv::dotenv().ok();
@@ -3561,18 +4084,12 @@ mod integration_specs {
         FunctionalTester::insert_in_db_users(user.clone()).await;
         FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
 
-        let new_email = String::from("bush1d3v2");
-        let new_password: String = String::from("123456789%");
-
         let jwt = JwtModels::access_jwt_model(user.id.clone());
-        let put_user_dto = MockPutUserDTO {
-            password: UserModels::complete_user_model_hashed().password,
-            email: String::from(""),
-            new_password,
-            new_email: new_email.clone(),
-        };
+        let mut put_user_dto = UserModels::put_user_model();
+        put_user_dto.new_email = String::from("v@i.com");
+
         let resp = user_call_http_before(
-            UserTypes::PutUserDTO(put_user_dto, Some(user.id.clone()), Some(jwt)),
+            UserTypes::PutUserDTO(put_user_dto.clone(), Some(user.id.clone()), Some(jwt)),
             false,
         )
         .await;
@@ -3588,7 +4105,7 @@ mod integration_specs {
             FunctionalTester::cant_see_in_database(
                 TablesEnum::Users,
                 "email",
-                Some(vec![("email", &new_email)]),
+                Some(vec![("email", &put_user_dto.new_email)]),
             )
             .await
         );
@@ -3601,6 +4118,13 @@ mod integration_specs {
         .await;
     }
 
+    /// # Put User Error New Email Regex
+    /// Test to check if the user has invalid (`PutUserDTO`) and returned the error message.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user is invalid (`PutUserDTO`) and returned the error message.
+    /// - The response status is 400, and the response body (`HttpResponse`) contains the error
     #[test]
     async fn _put_user_error_new_email_regex() {
         dotenv::dotenv().ok();
@@ -3611,23 +4135,17 @@ mod integration_specs {
         FunctionalTester::insert_in_db_users(user.clone()).await;
         FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
 
-        let new_email = String::from("bush1d3v2@gmailcom");
-        let new_password = String::from("123456789%");
-
         let jwt = JwtModels::access_jwt_model(user.id.clone());
-        let put_user_dto = MockPutUserDTO {
-            password: UserModels::complete_user_model_hashed().password,
-            email: String::from("teste@gmailcom"),
-            new_password,
-            new_email: new_email.clone(),
-        };
+        let mut put_user_dto = UserModels::put_user_model();
+        put_user_dto.new_email = String::from("teste@gmailcom");
+
         let resp = user_call_http_before(
-            UserTypes::PutUserDTO(put_user_dto, Some(user.id.clone()), Some(jwt)),
+            UserTypes::PutUserDTO(put_user_dto.clone(), Some(user.id.clone()), Some(jwt)),
             false,
         )
         .await;
 
-        assert_eq!(resp.status(), 400);
+        assert_eq!(resp.status(), 422);
 
         let bytes =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
@@ -3638,7 +4156,7 @@ mod integration_specs {
             FunctionalTester::cant_see_in_database(
                 TablesEnum::Users,
                 "email",
-                Some(vec![("email", &new_email)]),
+                Some(vec![("email", &put_user_dto.new_email)]),
             )
             .await
         );
@@ -3651,6 +4169,13 @@ mod integration_specs {
         .await;
     }
 
+    /// # Put User Error Jwt Unauthorized
+    /// Test to check if the user is unauthorized.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user is unauthorized.
+    /// - The response status is 401, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _put_user_error_jwt_unauthorized() {
         dotenv::dotenv().ok();
@@ -3661,18 +4186,11 @@ mod integration_specs {
         FunctionalTester::insert_in_db_users(user.clone()).await;
         FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
 
-        let new_email = String::from("bush1d3v2@gmail.com");
-        let new_password = String::from("123456789%");
-
         let jwt = JwtModels::refresh_jwt_model(user.id.clone());
-        let put_user_dto = MockPutUserDTO {
-            password: UserModels::complete_user_model().password,
-            email: UserModels::complete_user_model_hashed().email,
-            new_password,
-            new_email: new_email.clone(),
-        };
+        let put_user_dto = UserModels::put_user_model();
+
         let resp = user_call_http_before(
-            UserTypes::PutUserDTO(put_user_dto, Some(user.id.clone()), Some(jwt)),
+            UserTypes::PutUserDTO(put_user_dto.clone(), Some(user.id.clone()), Some(jwt)),
             false,
         )
         .await;
@@ -3689,7 +4207,7 @@ mod integration_specs {
             FunctionalTester::cant_see_in_database(
                 TablesEnum::Users,
                 "email",
-                Some(vec![("email", &new_email.clone())]),
+                Some(vec![("email", &put_user_dto.new_email.clone())]),
             )
             .await
         );
@@ -3702,6 +4220,13 @@ mod integration_specs {
         .await;
     }
 
+    /// # Put User Error Jwt Authorization Not Found
+    /// Test to check if the authorization header is not found.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The authorization header is not found.
+    /// - The response status is 400, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _put_user_error_jwt_authorization_not_found() {
         dotenv::dotenv().ok();
@@ -3712,17 +4237,10 @@ mod integration_specs {
         FunctionalTester::insert_in_db_users(user.clone()).await;
         FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
 
-        let new_email = String::from("bush1d3v2@gmail.com");
-        let new_password = String::from("123456789%");
+        let put_user_dto = UserModels::put_user_model();
 
-        let put_user_dto = MockPutUserDTO {
-            password: UserModels::complete_user_model().password,
-            email: UserModels::complete_user_model_hashed().email,
-            new_password,
-            new_email: new_email.clone(),
-        };
         let resp = user_call_http_before(
-            UserTypes::PutUserDTO(put_user_dto, Some(user.id.clone()), None),
+            UserTypes::PutUserDTO(put_user_dto.clone(), Some(user.id.clone()), None),
             false,
         )
         .await;
@@ -3739,7 +4257,7 @@ mod integration_specs {
             FunctionalTester::cant_see_in_database(
                 TablesEnum::Users,
                 "email",
-                Some(vec![("email", &new_email.clone())]),
+                Some(vec![("email", &put_user_dto.new_email.clone())]),
             )
             .await
         );
@@ -3752,6 +4270,13 @@ mod integration_specs {
         .await;
     }
 
+    /// # Put User Error Not Found
+    /// Test to check if the request body is valid (`PutUserDTO`), but the user is not found.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The the request body is valid (`PutUserDTO`), but the user is not found.
+    /// - The response status is 404, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _put_user_error_not_found() {
         dotenv::dotenv().ok();
@@ -3759,18 +4284,11 @@ mod integration_specs {
         let salt = uuid::Uuid::new_v4().to_string();
         let user = UserModels::complete_user_model_hashed();
 
-        let new_email = String::from("bush1d3v2@gmail.com");
-        let new_password = String::from("123456789%");
-
         let jwt = JwtModels::access_jwt_model(user.id.clone());
-        let put_user_dto = MockPutUserDTO {
-            password: UserModels::complete_user_model().password,
-            email: UserModels::complete_user_model_hashed().email,
-            new_password,
-            new_email: new_email.clone(),
-        };
+        let put_user_dto = UserModels::put_user_model();
+
         let resp = user_call_http_before(
-            UserTypes::PutUserDTO(put_user_dto, Some(user.id), Some(jwt)),
+            UserTypes::PutUserDTO(put_user_dto.clone(), Some(user.id), Some(jwt)),
             false,
         )
         .await;
@@ -3788,7 +4306,7 @@ mod integration_specs {
             FunctionalTester::cant_see_in_database(
                 TablesEnum::Users,
                 "email",
-                Some(vec![("email", &new_email.clone())]),
+                Some(vec![("email", &put_user_dto.new_email.clone())]),
             )
             .await
         );
@@ -3801,6 +4319,13 @@ mod integration_specs {
         .await;
     }
 
+    /// # Put User Error Unauthorized
+    /// Test to check if the request body is valid (`PutUserDTO`), but the user is unauthorized.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The the request body is valid (`PutUserDTO`), but the user is unauthorized.
+    /// - The response status is 401, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _put_user_error_unauthorized() {
         dotenv::dotenv().ok();
@@ -3811,18 +4336,12 @@ mod integration_specs {
         FunctionalTester::insert_in_db_users(user.clone()).await;
         FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
 
-        let new_email = String::from("bush1d3v2@gmail.com");
-        let new_password = String::from("123456789%");
-
         let jwt = JwtModels::access_jwt_model(user.id.clone());
-        let put_user_dto = MockPutUserDTO {
-            password: new_password.clone(),
-            email: UserModels::complete_user_model_hashed().email,
-            new_password,
-            new_email: new_email.clone(),
-        };
+        let mut put_user_dto = UserModels::put_user_model();
+        put_user_dto.password = put_user_dto.new_password.clone();
+
         let resp = user_call_http_before(
-            UserTypes::PutUserDTO(put_user_dto, Some(user.id.clone()), Some(jwt)),
+            UserTypes::PutUserDTO(put_user_dto.clone(), Some(user.id.clone()), Some(jwt)),
             false,
         )
         .await;
@@ -3840,7 +4359,7 @@ mod integration_specs {
             FunctionalTester::cant_see_in_database(
                 TablesEnum::Users,
                 "email",
-                Some(vec![("email", &new_email.clone())]),
+                Some(vec![("email", &put_user_dto.new_email.clone())]),
             )
             .await
         );
@@ -3853,6 +4372,13 @@ mod integration_specs {
         .await;
     }
 
+    /// # Put User Error Forbidden
+    /// Test to check if the request body is valid (`PutUserDTO`), but the user is forbidden.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The the request body is valid (`PutUserDTO`), but the user is forbidden.
+    /// - The response status is 403, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _put_user_error_forbidden() {
         dotenv::dotenv().ok();
@@ -3863,18 +4389,12 @@ mod integration_specs {
         FunctionalTester::insert_in_db_users(user.clone()).await;
         FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
 
-        let new_email = String::from("bush1d3v2@gmail.com");
-        let new_password = String::from("123456789%");
-
         let jwt = JwtModels::access_jwt_model(user.id.clone());
-        let put_user_dto = MockPutUserDTO {
-            password: new_password.clone(),
-            email: String::from("bush1d3v2@gmail.com"),
-            new_password,
-            new_email: new_email.clone(),
-        };
+        let mut put_user_dto = UserModels::put_user_model();
+        put_user_dto.email = put_user_dto.new_email.clone();
+
         let resp = user_call_http_before(
-            UserTypes::PutUserDTO(put_user_dto, Some(user.id.clone()), Some(jwt)),
+            UserTypes::PutUserDTO(put_user_dto.clone(), Some(user.id.clone()), Some(jwt)),
             false,
         )
         .await;
@@ -3892,7 +4412,7 @@ mod integration_specs {
             FunctionalTester::cant_see_in_database(
                 TablesEnum::Users,
                 "email",
-                Some(vec![("email", &new_email.clone())]),
+                Some(vec![("email", &put_user_dto.new_email.clone())]),
             )
             .await
         );
@@ -3905,6 +4425,13 @@ mod integration_specs {
         .await;
     }
 
+    /// # Put User Error Conflict
+    /// Test to check if the request body is valid (`PutUserDTO`), but conflicted in the database.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The the request body is valid (`PutUserDTO`), but conflicted in the database.
+    /// - The response status is 409, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _put_user_error_conflict() {
         dotenv::dotenv().ok();
@@ -3915,16 +4442,10 @@ mod integration_specs {
         FunctionalTester::insert_in_db_users(user.clone()).await;
         FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
 
-        let new_email = user.email.clone();
-        let new_password = String::from("123456789%");
-
         let jwt = JwtModels::access_jwt_model(user.id.clone());
-        let put_user_dto = MockPutUserDTO {
-            password: UserModels::complete_user_model().password,
-            email: UserModels::complete_user_model_hashed().email,
-            new_password,
-            new_email: new_email.clone(),
-        };
+        let mut put_user_dto = UserModels::put_user_model();
+        put_user_dto.new_email = user.email.clone();
+
         let resp = user_call_http_before(
             UserTypes::PutUserDTO(put_user_dto, Some(user.id.clone()), Some(jwt)),
             false,
@@ -3957,6 +4478,13 @@ mod integration_specs {
         .await;
     }
 
+    /// # Put User Error UUID Path Type Value
+    /// Test to check if the user_id is invalid.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user_id is invalid.
+    /// - The responde status is 400, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _put_user_error_uuid_path_type_value() {
         dotenv::dotenv().ok();
@@ -3967,19 +4495,14 @@ mod integration_specs {
         FunctionalTester::insert_in_db_users(user.clone()).await;
         FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
 
-        let new_email = String::from("bush1d3v2@gmail.com");
-        let new_password = String::from("123456789%");
-
         let jwt = JwtModels::access_jwt_model(user.id.clone());
-        let put_user_dto = MockPutUserDTO {
-            password: UserModels::complete_user_model().password,
-            email: UserModels::complete_user_model_hashed().email,
-            new_password,
-            new_email: new_email.clone(),
-        };
-        let resp =
-            user_call_http_before(UserTypes::PutUserDTO(put_user_dto, None, Some(jwt)), false)
-                .await;
+        let put_user_dto: MockPutUserDTO = UserModels::put_user_model();
+
+        let resp = user_call_http_before(
+            UserTypes::PutUserDTO(put_user_dto.clone(), None, Some(jwt)),
+            false,
+        )
+        .await;
 
         assert_eq!(resp.status(), 400);
 
@@ -3993,7 +4516,7 @@ mod integration_specs {
             FunctionalTester::cant_see_in_database(
                 TablesEnum::Users,
                 "email",
-                Some(vec![("email", &new_email.clone())]),
+                Some(vec![("email", &put_user_dto.new_email.clone())]),
             )
             .await
         );
@@ -4006,6 +4529,13 @@ mod integration_specs {
         .await;
     }
 
+    /// # Put User Error Service Unavailable
+    /// Test to check if the request body is valid (`PutUserDTO`), but the database is unavailable.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The request body is valid (`PutUserDTO`), but the database is unavailable.
+    /// - The responde status is 503, and the response body (`HttpResponse`) contains the error message.
     #[test]
     async fn _put_user_error_service_unavailable() {
         dotenv::dotenv().ok();
@@ -4016,18 +4546,11 @@ mod integration_specs {
         FunctionalTester::insert_in_db_users(user.clone()).await;
         FunctionalTester::insert_in_db_salt(user.id.clone(), salt.clone()).await;
 
-        let new_email = String::from("bush1d3v2@gmail.com");
-        let new_password = String::from("123456789%");
-
         let jwt = JwtModels::access_jwt_model(user.id.clone());
-        let put_user_dto = MockPutUserDTO {
-            password: UserModels::complete_user_model().password,
-            email: UserModels::complete_user_model_hashed().email,
-            new_password,
-            new_email: new_email.clone(),
-        };
+        let put_user_dto: MockPutUserDTO = UserModels::put_user_model();
+
         let resp = user_call_http_before(
-            UserTypes::PutUserDTO(put_user_dto, Some(user.id.clone()), Some(jwt)),
+            UserTypes::PutUserDTO(put_user_dto.clone(), Some(user.id.clone()), Some(jwt)),
             true,
         )
         .await;
@@ -4044,7 +4567,7 @@ mod integration_specs {
             FunctionalTester::cant_see_in_database(
                 TablesEnum::Users,
                 "email",
-                Some(vec![("email", &new_email.clone())]),
+                Some(vec![("email", &put_user_dto.new_email.clone())]),
             )
             .await
         );
