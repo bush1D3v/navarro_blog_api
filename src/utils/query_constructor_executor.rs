@@ -11,7 +11,7 @@ use tokio_postgres::Row;
 ///
 /// # Parameters
 ///
-/// - `pg_pool`: A connection pool for the database.
+/// - `postgres_pool`: A connection pool for the database.
 /// - `sql_builder`: An instance of the `SqlBuilder` struct.
 ///
 /// # Returns
@@ -36,18 +36,18 @@ use tokio_postgres::Row;
 /// use actix_web::{web::Data, HttpResponse};
 /// use deadpool_postgres::Pool;
 ///
-/// pub async fn example(pg_pool: Data<Pool>, sql_builder: SqlBuilder) -> Result<Vec<postgres::Row>, HttpResponse> {
-///     match query_constructor_executor(pg_pool, sql_builder).await {
+/// pub async fn example(postgres_pool: Data<Pool>, sql_builder: SqlBuilder) -> Result<Vec<postgres::Row>, HttpResponse> {
+///     match query_constructor_executor(postgres_pool, sql_builder).await {
 ///         Ok(x) => Ok(x),
 ///         Err(e) => return Err(e),
 ///     }
 /// }
 /// ```
 pub async fn query_constructor_executor(
-    pg_pool: actix_web::web::Data<deadpool_postgres::Pool>,
+    postgres_pool: actix_web::web::Data<deadpool_postgres::Pool>,
     sql_builder: SqlBuilder,
 ) -> Result<Vec<Row>, HttpResponse> {
-    let mut conn = match pg_pool.get().await {
+    let mut conn = match postgres_pool.get().await {
         Ok(x) => x,
         Err(e) => return Err(custom_error_to_io_error_kind(CustomError::PoolError(e))),
     };
