@@ -12,6 +12,7 @@ use crate::{
         user_services::{delete_user_service, login_user_service},
     },
     shared::structs::query_params::QueryParams,
+    utils::validate_body_error::validate_body_error,
 };
 use actix_web::{
     body::BoxBody, delete, get, options, post, put, web, HttpRequest, HttpResponse, Responder,
@@ -52,6 +53,15 @@ pub fn user_controllers_module() -> actix_web::Scope {
                     "max": 255
                 }
 		    }]
+        })
+	), (
+		status = 422, description = "Erro do usuário, por campo com formato inválido (Unprocessable Entity)",
+		body = ErrorStruct, content_type = "application/json", example = json ! ({
+            "code": "regex",
+            "message": "O e-mail deve ser um endereço válido.",
+            "params": {
+                "value": "teste34gmail.com"
+            }
         })
 	), (
 		status = 409, description = "Conflito com recurso já no servidor (Conflict)", body = ErrorStruct,
@@ -99,17 +109,17 @@ async fn insert_user(
     body: web::Json<InsertUserDTO>,
     queue: web::Data<Arc<InsertUserAppQueue>>,
     redis_pool: web::Data<deadpool_redis::Pool>,
-    pg_pool: web::Data<deadpool_postgres::Pool>,
+    postgres_pool: web::Data<deadpool_postgres::Pool>,
 ) -> impl Responder {
     match body.validate() {
         Ok(_) => (),
-        Err(e) => return HttpResponse::BadRequest().json(e),
+        Err(e) => return validate_body_error(e.field_errors()),
     };
     let redis_user = match Redis::get(&redis_pool, &body.email.clone()).await {
         Ok(redis_user) => redis_user,
         Err(_) => String::from(""),
     };
-    match insert_user_service(queue.clone(), pg_pool, body, redis_user).await {
+    match insert_user_service(queue.clone(), postgres_pool, body, redis_user).await {
         Ok(resp) => match UserSerdes::serde_json_to_string(&resp) {
             Ok(redis_user) => {
                 let _ = Redis::set(&redis_pool, &resp.id, &redis_user).await;
@@ -129,7 +139,7 @@ async fn insert_user(
     path = "/user/login",
 	request_body = LoginUserDTO,
 	responses((
-		status = 200, description = "Usuário logado com sucesso (OK)", body = LoginResponse,
+		status = 200, description = "Usuário logado com sucesso (OK)", body = LoginUserServiceResponse,
 		content_type = "application/json", example = json ! ({
 			"access_token": "string",
             "access_expires_in": "i64",
@@ -176,6 +186,15 @@ async fn insert_user(
 		    }]
         })
 	), (
+		status = 422, description = "Erro do usuário, por campo com formato inválido (Unprocessable Entity)",
+		body = ErrorStruct, content_type = "application/json", example = json ! ({
+            "code": "regex",
+            "message": "O e-mail deve ser um endereço válido.",
+            "params": {
+                "value": "teste34gmail.com"
+            }
+        })
+	), (
 		status = 500, description = "Erro Interno do Servidor (Internal Server Error)", body = ErrorStruct,
 		content_type = "application/json", example = json ! ({
             "bcrypt": [{
@@ -206,18 +225,18 @@ async fn insert_user(
 #[post("login")]
 async fn login_user(
     body: web::Json<LoginUserDTO>,
-    pg_pool: web::Data<deadpool_postgres::Pool>,
+    postgres_pool: web::Data<deadpool_postgres::Pool>,
     redis_pool: web::Data<deadpool_redis::Pool>,
 ) -> impl Responder {
     match body.validate() {
         Ok(_) => (),
-        Err(e) => return HttpResponse::BadRequest().json(e),
+        Err(e) => return validate_body_error(e.field_errors()),
     };
     let redis_user = match Redis::get(&redis_pool, &body.email).await {
         Ok(redis_user) => redis_user,
         Err(_) => String::from(""),
     };
-    match login_user_service(body.clone(), pg_pool, redis_user.clone()).await {
+    match login_user_service(body.clone(), postgres_pool, redis_user.clone()).await {
         Ok(service_resp) => {
             login_user_response_constructor(service_resp, &redis_pool, &redis_user, &body.email)
                 .await
@@ -263,7 +282,7 @@ async fn login_user_response_constructor(
         ("order_direction" = Option<String>, Query, description = "Direção da ordenação")
     ),
     responses((
-        status = 200, description = "Listagem de usuários com sucesso (OK)", body = ListUserControllerResponse,
+        status = 200, description = "Listagem de usuários com sucesso (OK)", body = Vec<DetailUserDTO>,
         content_type = "application/json", example = json ! ([
                 {
                     "id": "f5d46b1b-6adb-40ac-82d6-b0006cf781c0",
@@ -334,7 +353,7 @@ async fn login_user_response_constructor(
 )]
 #[get("")]
 async fn list_users(
-    pg_pool: web::Data<deadpool_postgres::Pool>,
+    postgres_pool: web::Data<deadpool_postgres::Pool>,
     req: HttpRequest,
     query_params: web::Query<QueryParams>,
 ) -> impl Responder {
@@ -342,7 +361,7 @@ async fn list_users(
         Ok(_) => (),
         Err(e) => return e,
     };
-    match list_users_service(pg_pool, query_params).await {
+    match list_users_service(postgres_pool, query_params).await {
         Ok(users) => HttpResponse::Ok().json(users),
         Err(e) => e,
     }
@@ -353,12 +372,13 @@ async fn list_users(
     path = "/user/{user_id}",
     security(("bearer_auth" = [])),
     responses((
-        status = 200, description = "Detalhamento de usuário com sucesso (OK)", body = DetailUserControllerResponse,
+        status = 200, description = "Detalhamento de usuário com sucesso (OK)", body = DetailUserDTO,
         content_type = "application/json", example = json ! ({
             "id": "f5d46b1b-6adb-40ac-82d6-b0006cf781c0",
             "name": "borrow lightning",
             "email": "lightning@gmail.com",
             "created_at": "2024-06-18 22:03:54.053147-03",
+            "updated_at": "2024-06-22 18:03:54.053147-03"
         })
     ), (
 		status = 400, description = "Erro do usuário por id inválido e/ou falta de preenchimento (Bad Request)",
@@ -429,7 +449,7 @@ async fn list_users(
 )]
 #[get("{user_id}")]
 async fn detail_user(
-    pg_pool: web::Data<deadpool_postgres::Pool>,
+    postgres_pool: web::Data<deadpool_postgres::Pool>,
     redis_pool: web::Data<deadpool_redis::Pool>,
     user_id: web::Path<String>,
     req: HttpRequest,
@@ -442,7 +462,7 @@ async fn detail_user(
         Ok(redis_user) => redis_user,
         Err(_) => String::from(""),
     };
-    match detail_user_service(pg_pool, user_id.clone(), redis_user).await {
+    match detail_user_service(postgres_pool, user_id.clone(), redis_user).await {
         Ok(user_dto) => match UserSerdes::serde_json_to_string(&user_dto) {
             Ok(redis_user) => {
                 let _ = Redis::set(&redis_pool, &user_id, &redis_user).await;
@@ -452,6 +472,7 @@ async fn detail_user(
                     name: user_dto.name,
                     email: user_dto.email,
                     created_at: user_dto.created_at,
+                    updated_at: user_dto.updated_at,
                 };
                 HttpResponse::Ok().json(user)
             }
@@ -507,6 +528,15 @@ async fn detail_user(
 		    }]
         })
 	), (
+		status = 422, description = "Erro do usuário, por campo com formato inválido (Unprocessable Entity)",
+		body = ErrorStruct, content_type = "application/json", example = json ! ({
+            "code": "regex",
+            "message": "O e-mail deve ser um endereço válido.",
+            "params": {
+                "value": "teste34gmail.com"
+            }
+        })
+	), (
 		status = 500, description = "Erro Interno do Servidor (Internal Server Error)", body = ErrorStruct,
 		content_type = "application/json", example = json ! ({
             "jsonwebtoken": [{
@@ -536,7 +566,7 @@ async fn detail_user(
 )]
 #[delete("{user_id}")]
 async fn delete_user(
-    pg_pool: web::Data<deadpool_postgres::Pool>,
+    postgres_pool: web::Data<deadpool_postgres::Pool>,
     redis_pool: web::Data<deadpool_redis::Pool>,
     queue: web::Data<Arc<DeleteUserAppQueue>>,
     body: web::Json<DeleteUserDTO>,
@@ -549,14 +579,14 @@ async fn delete_user(
     };
     match body.validate() {
         Ok(_) => (),
-        Err(e) => return HttpResponse::BadRequest().json(e),
+        Err(e) => return validate_body_error(e.field_errors()),
     };
     let redis_user = match Redis::get(&redis_pool, &user_id).await {
         Ok(redis_user) => redis_user,
         Err(_) => String::from(""),
     };
     match delete_user_service(
-        pg_pool,
+        postgres_pool,
         queue,
         body.password.clone(),
         user_id.clone(),
@@ -653,6 +683,15 @@ async fn delete_user_response_constructor(
 		    }]
         })
 	), (
+		status = 422, description = "Erro do usuário, por campo com formato inválido (Unprocessable Entity)",
+		body = ErrorStruct, content_type = "application/json", example = json ! ({
+            "code": "regex",
+            "message": "O e-mail deve ser um endereço válido.",
+            "params": {
+                "value": "teste34gmail.com"
+            }
+        })
+	), (
 		status = 500, description = "Erro Interno do Servidor (Internal Server Error)", body = ErrorStruct,
 		content_type = "application/json", example = json ! ({
             "jsonwebtoken": [{
@@ -682,7 +721,7 @@ async fn delete_user_response_constructor(
 )]
 #[put("{user_id}")]
 async fn put_user(
-    pg_pool: web::Data<deadpool_postgres::Pool>,
+    postgres_pool: web::Data<deadpool_postgres::Pool>,
     redis_pool: web::Data<deadpool_redis::Pool>,
     queue: web::Data<Arc<PutUserAppQueue>>,
     body: web::Json<PutUserDTO>,
@@ -695,17 +734,24 @@ async fn put_user(
     };
     match body.validate() {
         Ok(_) => (),
-        Err(e) => return HttpResponse::BadRequest().json(e),
+        Err(e) => return validate_body_error(e.field_errors()),
     };
     let redis_user = match Redis::get(&redis_pool, &body.new_email).await {
         Ok(redis_user) => redis_user,
         Err(_) => String::from(""),
     };
-    let service_response =
-        match put_user_service(pg_pool, queue, body.clone(), user_id.clone(), redis_user).await {
-            Ok(service_resp) => service_resp,
-            Err(e) => return e,
-        };
+    let service_response = match put_user_service(
+        postgres_pool,
+        queue,
+        body.clone(),
+        user_id.clone(),
+        redis_user,
+    )
+    .await
+    {
+        Ok(service_resp) => service_resp,
+        Err(e) => return e,
+    };
     match UserSerdes::serde_json_to_string(&service_response) {
         Ok(redis_user) => {
             put_user_response_constructor(

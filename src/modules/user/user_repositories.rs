@@ -32,13 +32,13 @@ fn user_dto_constructor(rows: Vec<postgres::Row>) -> UserDTO {
 
 pub async fn get_user_salt_repository(
     user_id: String,
-    pg_pool: Data<deadpool_postgres::Pool>,
+    postgres_pool: Data<deadpool_postgres::Pool>,
 ) -> Result<String, HttpResponse> {
     let mut sql_builder = sql_builder::SqlBuilder::select_from("salt");
     sql_builder.field("salt");
     sql_builder.or_where_eq("user_id", &quote(user_id));
 
-    let rows = match query_constructor_executor(pg_pool, sql_builder).await {
+    let rows = match query_constructor_executor(postgres_pool, sql_builder).await {
         Ok(x) => x,
         Err(e) => return Err(e),
     };
@@ -83,12 +83,12 @@ pub async fn insert_user_repository(
 
 pub async fn login_user_repository(
     email: String,
-    pg_pool: Data<deadpool_postgres::Pool>,
+    postgres_pool: Data<deadpool_postgres::Pool>,
 ) -> Result<UserDTO, HttpResponse> {
     let mut sql_builder = sql_builder::SqlBuilder::select_from("users");
     sql_builder.or_where_eq("email", &quote(email.clone()));
 
-    let rows = match query_constructor_executor(pg_pool, sql_builder).await {
+    let rows = match query_constructor_executor(postgres_pool, sql_builder).await {
         Ok(x) => x,
         Err(e) => return Err(e),
     };
@@ -108,13 +108,13 @@ pub async fn login_user_repository(
 }
 
 pub async fn detail_user_repository(
-    pg_pool: Data<deadpool_postgres::Pool>,
+    postgres_pool: Data<deadpool_postgres::Pool>,
     user_id: String,
 ) -> Result<UserDTO, HttpResponse> {
     let mut sql_builder = sql_builder::SqlBuilder::select_from("users");
     sql_builder.or_where_eq("id", &quote(user_id));
 
-    let rows = match query_constructor_executor(pg_pool, sql_builder).await {
+    let rows = match query_constructor_executor(postgres_pool, sql_builder).await {
         Ok(x) => x,
         Err(e) => return Err(e),
     };
@@ -134,7 +134,7 @@ pub async fn detail_user_repository(
 }
 
 pub async fn list_users_repository(
-    pg_pool: Data<deadpool_postgres::Pool>,
+    postgres_pool: Data<deadpool_postgres::Pool>,
     query_params: Query<QueryParams>,
 ) -> Result<Vec<DetailUserDTO>, HttpResponse> {
     let order_by = query_params
@@ -147,7 +147,7 @@ pub async fn list_users_repository(
         .unwrap_or(String::from("desc"));
 
     let mut sql_builder = sql_builder::SqlBuilder::select_from("users");
-    sql_builder.fields(&["id", "name", "email", "created_at"]);
+    sql_builder.fields(&["id", "name", "email", "created_at", "updated_at"]);
     sql_builder.order_by(
         order_by,
         match order_direction.as_str() {
@@ -160,7 +160,7 @@ pub async fn list_users_repository(
     sql_builder.limit(limit);
     sql_builder.offset(query_params.offset.unwrap_or(0));
 
-    let rows = match query_constructor_executor(pg_pool, sql_builder).await {
+    let rows = match query_constructor_executor(postgres_pool, sql_builder).await {
         Ok(x) => x,
         Err(e) => return Err(e),
     };
@@ -180,11 +180,13 @@ pub async fn list_users_repository(
     for row in rows {
         let user_id: uuid::Uuid = row.get("id");
         let created_at: chrono::DateTime<chrono::Utc> = row.get("created_at");
+        let updated_at: Option<chrono::DateTime<chrono::Utc>> = row.get("updated_at");
         let user = DetailUserDTO {
             id: user_id.to_string(),
             name: row.get("name"),
             email: row.get("email"),
             created_at: created_at.to_string(),
+            updated_at: updated_at.map(|x| x.to_string()),
         };
         users.push(user);
     }
