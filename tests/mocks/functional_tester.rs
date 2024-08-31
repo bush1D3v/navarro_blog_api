@@ -5,12 +5,36 @@ use super::{
 };
 use sql_builder::{quote, SqlBuilder};
 
+/// Salt DTO
+///
+/// Salt DTO is used to represent the salt object related to the user in the database.
+///
+/// # Examples
+///
+/// ```rust
+/// use navarro_blog_api::mocks::structs::user::MockSaltDTO;
+///
+/// let salt: MockSaltDTO = get_salt_from_db(None);
+/// ```
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct SaltDTO {
     pub salt: String,
     pub user_id: String,
 }
 
+/// Functional Tester
+///
+/// Functional Tester is used to perform query DB operations on the database.
+///
+/// # Examples
+///
+/// ```rust
+/// use navarro_blog_api::mocks::functional_tester::FunctionalTester;
+/// use navarro_blog_api::mocks::enums::db_table::TablesEnum;
+///
+/// let salt = uuid::Uuid::new_v4().to_string();
+/// FunctionalTester::delete_from_database(TablesEnum::Salt, Some(vec![("salt", &salt)])).await;
+/// ```
 pub struct FunctionalTester {
     db_table: String,
 }
@@ -22,6 +46,24 @@ impl std::fmt::Display for FunctionalTester {
 }
 
 impl FunctionalTester {
+    /// Construct Table
+    ///
+    /// Constructs a database table based on the enum value.
+    ///
+    /// # Parameters
+    ///
+    /// * `db_table` - The enum value of the table.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use navarro_blog_api::mocks::enums::db_table::TablesEnum;
+    /// use navarro_blog_api::mocks::functional_tester::FunctionalTester;
+    ///
+    /// pub fn example(db_table: TablesEnum) {
+    ///     let table = FunctionalTester::construct_table(db_table);
+    /// }
+    /// ```
     pub fn construct_table(db_table: TablesEnum) -> Self {
         let table = match db_table {
             TablesEnum::Users => "users",
@@ -41,6 +83,26 @@ impl FunctionalTester {
         }
     }
 
+    /// Delete From Database
+    ///
+    /// Deletes from the database based on the provided conditions and table & clean Redis.
+    ///
+    /// # Parameters
+    ///
+    /// * `db_table` - The table to delete from.
+    /// * `conditions` - The conditions to delete from the database.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use navarro_blog_api::mocks::enums::db_table::TablesEnum;
+    /// use navarro_blog_api::mocks::functional_tester::FunctionalTester;
+    ///
+    /// pub async fn example(db_table: TablesEnum) {
+    ///     let salt = uuid::Uuid::new_v4().to_string();
+    ///     FunctionalTester::delete_from_database(db_table, Some(vec![("salt", &salt)])).await;
+    /// }
+    /// ```
     pub async fn delete_from_database(db_table: TablesEnum, conditions: Option<Vec<(&str, &str)>>) {
         let client = PostgresModels::postgres_success().get().await.unwrap();
         let mut sql = SqlBuilder::delete_from(FunctionalTester::construct_table(db_table).db_table);
@@ -56,13 +118,34 @@ impl FunctionalTester {
         client.prepare(&stmt).await.unwrap();
         client.execute(&stmt, &[]).await.unwrap();
 
-        let mut redis_conn = RedisModels::pool_success().await.get().await.unwrap();
+        let mut redis_conn = RedisModels::redis_success().await.get().await.unwrap();
         let _: () = deadpool_redis::redis::cmd("FLUSHDB")
             .query_async(&mut redis_conn)
             .await
             .unwrap();
     }
 
+    /// Can See In Database
+    ///
+    /// Checks if the provided conditions can be seen in the database.
+    ///
+    /// # Parameters
+    ///
+    /// * `db_table` - The table to check in the database.
+    /// * `field` - The field to check in the database.
+    /// * `conditions` - The conditions to check in the database.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use navarro_blog_api::mocks::enums::db_table::TablesEnum;
+    /// use navarro_blog_api::mocks::functional_tester::FunctionalTester;
+    ///
+    /// pub async fn example(db_table: TablesEnum) {
+    ///     let salt = uuid::Uuid::new_v4().to_string();
+    ///     FunctionalTester::can_see_in_database(db_table, "salt", Some(vec![("salt", &salt)])).await;
+    /// }
+    /// ```
     pub async fn can_see_in_database(
         db_table: TablesEnum,
         field: &str,
@@ -88,6 +171,27 @@ impl FunctionalTester {
         !rows.is_empty()
     }
 
+    /// Can't See In Database
+    ///
+    /// Checks if the provided conditions can't be seen in the database.
+    ///
+    /// # Parameters
+    ///
+    /// * `db_table` - The table to check in the database.
+    /// * `field` - The field to check in the database.
+    /// * `conditions` - The conditions to check in the database.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use navarro_blog_api::mocks::enums::db_table::TablesEnum;
+    /// use navarro_blog_api::mocks::functional_tester::FunctionalTester;
+    ///
+    /// pub async fn example(db_table: TablesEnum) {
+    ///     let salt = uuid::Uuid::new_v4().to_string();
+    ///     FunctionalTester::cant_see_in_database(db_table, "salt", Some(vec![("salt", &salt)])).await;
+    /// }
+    /// ```
     pub async fn cant_see_in_database(
         db_table: TablesEnum,
         field: &str,
@@ -113,6 +217,25 @@ impl FunctionalTester {
         rows.is_empty()
     }
 
+    /// Insert Salt In Database
+    ///
+    /// Inserts the salt in the database.
+    ///
+    /// # Parameters
+    ///
+    /// * `user_id` - The user ID to relate the salt insert in the database.
+    /// * `salt` - The salt to insert in the database.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use navarro_blog_api::mocks::structs::user::MockSaltDTO;
+    /// use navarro_blog_api::mocks::functional_tester::FunctionalTester;
+    ///
+    /// pub async fn example(user_id: String, salt: String) {
+    ///     let salt = FunctionalTester::insert_in_db_salt(user_id, salt).await;
+    /// }
+    /// ```
     pub async fn insert_in_db_salt(user_id: String, salt: String) -> String {
         let client = PostgresModels::postgres_success().get().await.unwrap();
 
@@ -134,6 +257,24 @@ impl FunctionalTester {
         salt
     }
 
+    /// Get Salt From Database
+    ///
+    /// Gets the salt from the database based on the provided conditions.
+    ///
+    /// # Parameters
+    ///
+    /// * `conditions` - The conditions to get the salt from the database.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use navarro_blog_api::mocks::structs::user::MockSaltDTO;
+    /// use navarro_blog_api::mocks::functional_tester::FunctionalTester;
+    ///
+    /// pub async fn example(conditions: Option<Vec<(&str, &str)>>) {
+    ///     let salt = FunctionalTester::get_salt_from_db(conditions).await;
+    /// }
+    /// ```
     pub async fn get_salt_from_db(conditions: Option<Vec<(&str, &str)>>) -> SaltDTO {
         let mut conn = PostgresModels::postgres_success().get().await.unwrap();
         let transaction = conn.transaction().await.unwrap();
@@ -159,6 +300,24 @@ impl FunctionalTester {
         }
     }
 
+    /// Insert User In Database
+    ///
+    /// Inserts the user in the database.
+    ///
+    /// # Parameters
+    ///
+    /// * `user_body` - The user body to insert in the database.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use navarro_blog_api::mocks::structs::user::MockUserDTO;
+    /// use navarro_blog_api::mocks::functional_tester::FunctionalTester;
+    ///
+    /// pub async fn example(user_body: MockUserDTO) {
+    ///     let user = FunctionalTester::insert_in_db_users(user_body).await;
+    /// }
+    /// ```
     pub async fn insert_in_db_users(user_body: MockUserDTO) -> MockUserDTO {
         let mut pg_user = MockUserDTO {
             id: user_body.id.clone(),
@@ -216,6 +375,20 @@ impl FunctionalTester {
         pg_user
     }
 
+    /// Get User From Database
+    ///
+    /// Gets the user from the database based on the provided conditions.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use navarro_blog_api::mocks::structs::user::MockUserDTO;
+    /// use navarro_blog_api::mocks::functional_tester::FunctionalTester;
+    ///
+    /// pub async fn example(conditions: Option<Vec<(&str, &str)>>) {
+    ///     let user = FunctionalTester::get_user_from_db(conditions).await;
+    /// }
+    /// ```
     pub async fn get_user_from_db() -> String {
         let client = PostgresModels::postgres_success().get().await.unwrap();
         let stmt = client.prepare("SELECT salt FROM salt").await.unwrap();
