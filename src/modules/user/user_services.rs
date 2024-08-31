@@ -21,10 +21,11 @@ use actix_web::{
     HttpResponse,
 };
 use std::sync::Arc;
+use utoipa::ToSchema;
 
 pub async fn insert_user_service(
     queue: Data<Arc<InsertUserAppQueue>>,
-    pg_pool: Data<deadpool_postgres::Pool>,
+    postgres_pool: Data<deadpool_postgres::Pool>,
     mut body: Json<InsertUserDTO>,
     redis_user: String,
 ) -> Result<UserDTO, HttpResponse> {
@@ -38,7 +39,7 @@ pub async fn insert_user_service(
             None,
         )));
     }
-    match email_exists(pg_pool, body.email.clone()).await {
+    match email_exists(postgres_pool, body.email.clone()).await {
         Ok(_) => (),
         Err(e) => return Err(e),
     };
@@ -57,6 +58,7 @@ pub async fn insert_user_service(
     }
 }
 
+#[derive(ToSchema)]
 pub struct LoginUserServiceResponse {
     pub user: UserDTO,
     pub refresh_token: String,
@@ -67,22 +69,23 @@ pub struct LoginUserServiceResponse {
 
 pub async fn login_user_service(
     body: LoginUserDTO,
-    pg_pool: Data<deadpool_postgres::Pool>,
+    postgres_pool: Data<deadpool_postgres::Pool>,
     redis_user: String,
 ) -> Result<LoginUserServiceResponse, HttpResponse> {
     if redis_user == String::from("") {
-        match email_not_exists(pg_pool.clone(), body.email.clone()).await {
+        match email_not_exists(postgres_pool.clone(), body.email.clone()).await {
             Ok(_) => (),
             Err(e) => return Err(e),
         }
     }
 
-    let user_dto = match login_user_repository(body.email.clone(), pg_pool.clone()).await {
+    let user_dto = match login_user_repository(body.email.clone(), postgres_pool.clone()).await {
         Ok(user) => user,
         Err(e) => return Err(e),
     };
 
-    let user_salt = match get_user_salt_repository(user_dto.id.clone(), pg_pool.clone()).await {
+    let user_salt = match get_user_salt_repository(user_dto.id.clone(), postgres_pool.clone()).await
+    {
         Ok(user_salt) => user_salt,
         Err(e) => return Err(e),
     };
@@ -120,7 +123,7 @@ pub async fn login_user_service(
 }
 
 pub async fn detail_user_service(
-    pg_pool: Data<deadpool_postgres::Pool>,
+    postgres_pool: Data<deadpool_postgres::Pool>,
     user_id: String,
     redis_user: String,
 ) -> Result<UserDTO, HttpResponse> {
@@ -130,7 +133,7 @@ pub async fn detail_user_service(
             Err(e) => Err(e),
         }
     } else {
-        match detail_user_repository(pg_pool, user_id.clone()).await {
+        match detail_user_repository(postgres_pool, user_id.clone()).await {
             Ok(user) => Ok(user),
             Err(e) => Err(e),
         }
@@ -138,24 +141,24 @@ pub async fn detail_user_service(
 }
 
 pub async fn list_users_service(
-    pg_pool: Data<deadpool_postgres::Pool>,
+    postgres_pool: Data<deadpool_postgres::Pool>,
     query_params: Query<QueryParams>,
 ) -> Result<Vec<DetailUserDTO>, HttpResponse> {
-    match list_users_repository(pg_pool, query_params).await {
+    match list_users_repository(postgres_pool, query_params).await {
         Ok(user) => Ok(user),
         Err(e) => Err(e),
     }
 }
 
 pub async fn delete_user_service(
-    pg_pool: Data<deadpool_postgres::Pool>,
+    postgres_pool: Data<deadpool_postgres::Pool>,
     queue: Data<Arc<DeleteUserAppQueue>>,
     user_password: String,
     user_id: String,
     redis_user: String,
 ) -> Result<String, HttpResponse> {
     let db_user: UserDTO = if redis_user == String::from("") {
-        match detail_user_repository(pg_pool.clone(), user_id.clone()).await {
+        match detail_user_repository(postgres_pool.clone(), user_id.clone()).await {
             Ok(user_dto) => user_dto,
             Err(e) => return Err(e),
         }
@@ -167,7 +170,7 @@ pub async fn delete_user_service(
     };
 
     match password_verifier(
-        pg_pool,
+        postgres_pool,
         user_id.clone(),
         db_user.password,
         user_password.clone(),
@@ -186,7 +189,7 @@ pub async fn delete_user_service(
 }
 
 pub async fn put_user_service(
-    pg_pool: Data<deadpool_postgres::Pool>,
+    postgres_pool: Data<deadpool_postgres::Pool>,
     queue: Data<Arc<PutUserAppQueue>>,
     mut body: PutUserDTO,
     user_id: String,
@@ -202,12 +205,12 @@ pub async fn put_user_service(
             None,
         )));
     }
-    match email_exists(pg_pool.clone(), body.new_email.clone()).await {
+    match email_exists(postgres_pool.clone(), body.new_email.clone()).await {
         Ok(_) => (),
         Err(e) => return Err(e),
     };
 
-    let mut db_user = match detail_user_repository(pg_pool.clone(), user_id.clone()).await {
+    let mut db_user = match detail_user_repository(postgres_pool.clone(), user_id.clone()).await {
         Ok(user_dto) => user_dto,
         Err(e) => return Err(e),
     };
@@ -226,7 +229,7 @@ pub async fn put_user_service(
     }
 
     let salt = match password_verifier(
-        pg_pool.clone(),
+        postgres_pool.clone(),
         user_id.clone(),
         db_user.password.clone(),
         body.password.clone(),
