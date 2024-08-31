@@ -4,10 +4,33 @@ use deadpool_redis::{
 };
 use std::{env, time::Duration};
 
+/// Models for Redis
+///
+/// It contains the Redis Pool Connection models.
+///
+/// # Functions
+///
+/// - `postgres_success()` - It creates a Success Redis Pool Connection.
+/// - `postgres_error()` - It creates a Error Redis Pool Connection.
 pub struct RedisModels {}
 
 impl RedisModels {
-    pub async fn pool_success() -> Pool {
+    /// Redis Success model
+    ///
+    /// It creates a Success Redis Pool Connection.
+    ///
+    /// # Recommended Use
+    ///
+    /// In tests, these model is used to guarantee that Redis is available.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use navarro_blog_api::mocks::models::redis::RedisModels;
+    ///
+    /// let pool = RedisModels::redis_success();
+    /// ```
+    pub async fn redis_success() -> Pool {
         let mut cfg = Config::default();
         cfg.connection = Some(ConnectionInfo {
             addr: ConnectionAddr::Tcp(
@@ -32,7 +55,22 @@ impl RedisModels {
         cfg.create_pool(Some(Runtime::Tokio1)).unwrap()
     }
 
-    pub async fn pool_error() -> Pool {
+    /// Redis Error model
+    ///
+    /// It creates a Error Redis Pool Connection.
+    ///
+    /// # Recommended Use
+    ///
+    /// In tests, these model is used to throw a redis connection error.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use navarro_blog_api::mocks::models::redis::RedisModels;
+    ///
+    /// let pool = RedisModels::redis_error();
+    /// ```
+    pub async fn redis_error() -> Pool {
         let mut cfg = Config::default();
         cfg.connection = Some(ConnectionInfo {
             addr: ConnectionAddr::Tcp(
