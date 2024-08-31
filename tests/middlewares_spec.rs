@@ -1,7 +1,15 @@
 pub mod mocks;
 
+/// Middlewares Specs
+///
+/// Middlewares tests for the `middlewares` folder.
+///
+/// # Middlewares that are being tested
+///
+/// - `auth_middleware` - Check if the user is authenticated
+/// - `jwt_token_middleware` - Check if the JWT token is valid
+/// - `uuid_path_middleware` - Check if the UUID path is valid
 #[cfg(test)]
-
 mod middlewares_specs {
     use crate::mocks::models::jwt::JwtModels;
     use actix_web::{
@@ -15,6 +23,11 @@ mod middlewares_specs {
         uuid_path_middleware::uuid_path_middleware,
     };
 
+    /// Test to check if the JWT token in the request header is valid.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The JWT token is valid, contains the ID of the correct user.
     #[test]
     async fn _jwt_token() {
         dotenv::dotenv().ok();
@@ -36,6 +49,12 @@ mod middlewares_specs {
         assert!(token.claims.sub.contains(&id));
     }
 
+    /// Test to check if the JWT token in the request header is invalid.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The JWT token is invalid, containing the refresh jwt instead of the access jwt.
+    /// - The response status is 401, and the response body contains the error message.
     #[test]
     async fn _jwt_token_error_refresh_token() {
         dotenv::dotenv().ok();
@@ -61,6 +80,12 @@ mod middlewares_specs {
         assert!(bytes.contains("bearer token"));
     }
 
+    /// Test to check if the request header is missing the JWT token.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The request header is missing the JWT token.
+    /// - The response status is 400, and the response body contains the error message.
     #[test]
     async fn _jwt_token_error_authorization_not_found() {
         dotenv::dotenv().ok();
@@ -84,6 +109,11 @@ mod middlewares_specs {
         assert!(bytes.contains("O valor do cabeçalho 'Authorization' deve ser informado."));
     }
 
+    /// Test to check if the UUID path is valid.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The UUID path is valid, contains the UUID.
     #[test]
     async fn _uuid_path() {
         dotenv::dotenv().ok();
@@ -95,6 +125,12 @@ mod middlewares_specs {
         assert_eq!(resp, uuid);
     }
 
+    /// Test to check if the UUID path is invalid.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The UUID path is invalid.
+    /// - The response status is 400, and the response body contains the error message.
     #[test]
     async fn _uuid_path_error_type_value() {
         dotenv::dotenv().ok();
@@ -115,6 +151,11 @@ mod middlewares_specs {
         assert!(bytes.contains("bad request"));
     }
 
+    /// Test to check if the user is fully authenticated.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user is authenticated and contains the `user_id` in the request param.
     #[test]
     async fn _auth() {
         dotenv::dotenv().ok();
@@ -133,6 +174,12 @@ mod middlewares_specs {
         assert_eq!(resp, ());
     }
 
+    /// Test to check if the user is authenticated, but the `user_id` is invalid.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user is authenticated, but the `user_id` is invalid, not typeof UUID.
+    /// - The response status is 400, and the response body contains the error message.
     #[test]
     async fn _auth_error_type_value() {
         dotenv::dotenv().ok();
@@ -158,6 +205,12 @@ mod middlewares_specs {
         assert!(bytes.contains("bad request"));
     }
 
+    /// Test to check if the `user_id` is valid, but the user is not authenticated.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user_id is a valid UUID, but the user is not authenticated.
+    /// - The response status is 401, and the response body contains the error message.
     #[test]
     async fn _auth_error_refresh_token() {
         dotenv::dotenv().ok();
@@ -182,6 +235,12 @@ mod middlewares_specs {
         assert!(bytes.contains("bearer token"));
     }
 
+    /// Test to check if the `user_id` is valid, but the request header is empty.
+    ///
+    /// ### Result Expected
+    ///
+    /// - The user_id is a valid UUID, but the request header is empty.
+    /// - The response status is 400, and the response body contains the error message.
     #[test]
     async fn _auth_error_authorization_not_found() {
         dotenv::dotenv().ok();
