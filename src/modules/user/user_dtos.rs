@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use validator::Validate;
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, ToSchema)]
 pub struct UserDTO {
     pub id: String,
     pub name: String,
@@ -98,6 +98,7 @@ pub struct DetailUserDTO {
     pub name: String,
     pub email: String,
     pub created_at: String,
+    pub updated_at: Option<String>,
 }
 
 #[derive(ToSchema, Serialize, Deserialize, Clone, Validate)]
