@@ -41,9 +41,9 @@ use crate::{
 /// use actix_web::{web::Data, HttpResponse};
 /// use deadpool_postgres::Pool;
 ///
-/// pub async fn example(pg_pool: Data<Pool>, user_id: String, db_user: UserDTO, body: LoginUserDTO) -> Result<String, HttpResponse> {
+/// pub async fn example(postgres_pool: Data<Pool>, user_id: String, db_user: UserDTO, body: LoginUserDTO) -> Result<String, HttpResponse> {
 ///     match password_verifier(
-///         pg_pool.clone(),
+///         postgres_pool.clone(),
 ///         user_id.clone(),
 ///         db_user.password.clone(),
 ///         body.password.clone(),
