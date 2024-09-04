@@ -105,7 +105,7 @@ pub fn user_controllers_module() -> actix_web::Scope {
 	))
 )]
 #[post("")]
-async fn insert_user(
+pub async fn insert_user(
     body: web::Json<InsertUserDTO>,
     queue: web::Data<Arc<InsertUserAppQueue>>,
     redis_pool: web::Data<deadpool_redis::Pool>,
@@ -223,7 +223,7 @@ async fn insert_user(
 	))
 )]
 #[post("login")]
-async fn login_user(
+pub async fn login_user(
     body: web::Json<LoginUserDTO>,
     postgres_pool: web::Data<deadpool_postgres::Pool>,
     redis_pool: web::Data<deadpool_redis::Pool>,
@@ -352,7 +352,7 @@ async fn login_user_response_constructor(
 	))
 )]
 #[get("")]
-async fn list_users(
+pub async fn list_users(
     postgres_pool: web::Data<deadpool_postgres::Pool>,
     req: HttpRequest,
     query_params: web::Query<QueryParams>,
@@ -381,19 +381,6 @@ async fn list_users(
             "updated_at": "2024-06-22 18:03:54.053147-03"
         })
     ), (
-		status = 400, description = "Erro do usuário por id inválido e/ou falta de preenchimento (Bad Request)",
-		body = ErrorStruct, content_type = "application/json", example = json ! ({
-            "user_id": [{
-                "code": "bad request",
-                "message": "Por favor, envie um valor de UUID válido na URL da requisição.",
-                "params": {
-                    "min": null,
-                    "value": null,
-                    "max": null
-                }
-		    }]
-        })
-	), (
 		status = 401, description = "Credenciais de autenticação inválidas (Unauthorized)",
 		body = ErrorStruct, content_type = "application/json", example = json ! ({
             "bearer token": [{
@@ -448,7 +435,7 @@ async fn list_users(
 	))
 )]
 #[get("{user_id}")]
-async fn detail_user(
+pub async fn detail_user(
     postgres_pool: web::Data<deadpool_postgres::Pool>,
     redis_pool: web::Data<deadpool_redis::Pool>,
     user_id: web::Path<String>,
@@ -493,7 +480,7 @@ async fn detail_user(
 		body = ErrorStruct, content_type = "application/json", example = json ! ({
             "user_id": [{
                 "code": "bad request",
-                "message": "Por favor, envie um valor de UUID válido na URL da requisição.",
+                "message": "A senha deve ter pelo menos 8 caracteres.",
                 "params": {
                     "min": null,
                     "value": null,
@@ -565,7 +552,7 @@ async fn detail_user(
 	))
 )]
 #[delete("{user_id}")]
-async fn delete_user(
+pub async fn delete_user(
     postgres_pool: web::Data<deadpool_postgres::Pool>,
     redis_pool: web::Data<deadpool_redis::Pool>,
     queue: web::Data<Arc<DeleteUserAppQueue>>,
@@ -622,7 +609,7 @@ async fn delete_user_response_constructor(
 		body = ErrorStruct, content_type = "application/json", example = json ! ({
             "user_id": [{
                 "code": "bad request",
-                "message": "Por favor, envie um valor de UUID válido na URL da requisição.",
+                "message": "A senha deve ter pelo menos 8 caracteres.",
                 "params": {
                     "min": null,
                     "value": null,
@@ -720,7 +707,7 @@ async fn delete_user_response_constructor(
 	))
 )]
 #[put("{user_id}")]
-async fn put_user(
+pub async fn put_user(
     postgres_pool: web::Data<deadpool_postgres::Pool>,
     redis_pool: web::Data<deadpool_redis::Pool>,
     queue: web::Data<Arc<PutUserAppQueue>>,
