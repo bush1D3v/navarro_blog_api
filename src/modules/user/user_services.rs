@@ -7,6 +7,7 @@ use super::{
 };
 use crate::{
     shared::{
+        exceptions::exceptions::Exceptions,
         structs::query_params::QueryParams,
         treaties::{
             bcrypt_treated::{Bcrypt, BcryptVerifyData},
@@ -14,7 +15,7 @@ use crate::{
             strip_suffix_treated::StripSuffix,
         },
     },
-    utils::{error_construct::error_construct, password_verifier::password_verifier},
+    utils::password_verifier::password_verifier,
 };
 use actix_web::{
     web::{Data, Json, Query},
@@ -30,14 +31,7 @@ pub async fn insert_user_service(
     redis_user: String,
 ) -> Result<UserDTO, HttpResponse> {
     if redis_user != String::from("") {
-        return Err(HttpResponse::Conflict().json(error_construct(
-            String::from("email"),
-            String::from("conflict"),
-            String::from("Este e-mail já está sendo utilizado por outro usuário."),
-            Some(body.email.clone()),
-            None,
-            None,
-        )));
+        return Err(Exceptions::conflict(body.email.clone()));
     }
     match email_exists(postgres_pool, body.email.clone()).await {
         Ok(_) => (),
@@ -196,14 +190,7 @@ pub async fn put_user_service(
     redis_user: String,
 ) -> Result<UserDTO, HttpResponse> {
     if redis_user != String::from("") {
-        return Err(HttpResponse::Conflict().json(error_construct(
-            String::from("email"),
-            String::from("conflict"),
-            String::from("Este e-mail já está sendo utilizado por outro usuário."),
-            Some(body.email.clone()),
-            None,
-            None,
-        )));
+        return Err(Exceptions::conflict(body.email.clone()));
     }
     match email_exists(postgres_pool.clone(), body.new_email.clone()).await {
         Ok(_) => (),
@@ -216,16 +203,7 @@ pub async fn put_user_service(
     };
 
     if db_user.email != body.email {
-        return Err(HttpResponse::Forbidden().json(error_construct(
-            String::from("user"),
-            String::from("forbidden"),
-            String::from(
-                "Você não tem permissão para alterar informações associadas a um e-mail que não está vinculado ao seu ID de usuário.",
-            ),
-            Some(body.email),
-            None,
-            None,
-        )));
+        return Err(Exceptions::forbidden(body.email.clone()));
     }
 
     let salt = match password_verifier(

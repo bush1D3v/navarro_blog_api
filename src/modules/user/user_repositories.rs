@@ -3,10 +3,8 @@ use super::{
     user_queues::{DeleteUserAppQueue, InsertUserAppQueue, PutUserAppQueue},
 };
 use crate::{
-    shared::structs::query_params::QueryParams,
-    utils::{
-        error_construct::error_construct, query_constructor_executor::query_constructor_executor,
-    },
+    shared::{exceptions::exceptions::Exceptions, structs::query_params::QueryParams},
+    utils::query_constructor_executor::query_constructor_executor,
 };
 use actix_web::{
     web::{Data, Json, Query},
@@ -44,14 +42,10 @@ pub async fn get_user_salt_repository(
     };
 
     if rows.is_empty() {
-        return Err(HttpResponse::InternalServerError().json(error_construct(
+        return Err(Exceptions::internal_server_error(
             String::from("server"),
-            String::from("internal server error"),
             String::from("Erro inesperado no servidor. Tente novamente mais tarde."),
-            None,
-            None,
-            None,
-        )));
+        ));
     }
 
     let salt: uuid::Uuid = rows[0].get("salt");
@@ -94,14 +88,11 @@ pub async fn login_user_repository(
     };
 
     if rows.is_empty() {
-        return Err(HttpResponse::NotFound().json(error_construct(
+        return Err(Exceptions::not_found(
             String::from("user"),
-            String::from("not found"),
             String::from("Não foi encontrado um usuário com este e-mail."),
             Some(email),
-            None,
-            None,
-        )));
+        ));
     }
 
     Ok(user_dto_constructor(rows))
@@ -112,7 +103,7 @@ pub async fn detail_user_repository(
     user_id: String,
 ) -> Result<UserDTO, HttpResponse> {
     let mut sql_builder = sql_builder::SqlBuilder::select_from("users");
-    sql_builder.or_where_eq("id", &quote(user_id));
+    sql_builder.or_where_eq("id", &quote(user_id.clone()));
 
     let rows = match query_constructor_executor(postgres_pool, sql_builder).await {
         Ok(x) => x,
@@ -120,14 +111,11 @@ pub async fn detail_user_repository(
     };
 
     if rows.is_empty() {
-        return Err(HttpResponse::NotFound().json(error_construct(
+        return Err(Exceptions::not_found(
             String::from("user"),
-            String::from("not found"),
             String::from("Não foi encontrado um usuário com este id."),
-            None,
-            None,
-            None,
-        )));
+            Some(user_id),
+        ));
     }
 
     Ok(user_dto_constructor(rows))
@@ -166,14 +154,11 @@ pub async fn list_users_repository(
     };
 
     if rows.is_empty() {
-        return Err(HttpResponse::NotFound().json(error_construct(
+        return Err(Exceptions::not_found(
             String::from("users"),
-            String::from("not found"),
             String::from("Não foram encontrados usuários."),
             None,
-            None,
-            None,
-        )));
+        ));
     }
 
     let mut users: Vec<DetailUserDTO> = Vec::with_capacity(limit as usize);

@@ -1,7 +1,7 @@
 use actix_web::HttpResponse;
 use bcrypt::DEFAULT_COST;
 
-use crate::utils::error_construct::error_construct;
+use crate::shared::exceptions::exceptions::Exceptions;
 
 pub struct Bcrypt {}
 
@@ -19,48 +19,30 @@ impl Bcrypt {
         match bcrypt::verify(password, hash) {
             Ok(true) => Ok(()),
             Ok(false) => match data {
-                BcryptVerifyData::EmailPassword(email, password) => {
-                    Err(HttpResponse::Unauthorized().json(error_construct(
-                        String::from("email/password"),
-                        String::from("unauthorized"),
-                        String::from("E-mail e/ou senha incorretos."),
-                        Some(format!("{}/{}", email, password)),
-                        None,
-                        None,
-                    )))
-                }
-                BcryptVerifyData::Password(password) => {
-                    Err(HttpResponse::Unauthorized().json(error_construct(
-                        String::from("password"),
-                        String::from("unauthorized"),
-                        String::from("Senha incorreta."),
-                        Some(password),
-                        None,
-                        None,
-                    )))
-                }
+                BcryptVerifyData::EmailPassword(email, password) => Err(Exceptions::unauthorized(
+                    String::from("email/password"),
+                    String::from("E-mail e/ou senha incorretos."),
+                    Some(format!("{}/{}", email, password)),
+                )),
+                BcryptVerifyData::Password(password) => Err(Exceptions::unauthorized(
+                    String::from("password"),
+                    String::from("Senha incorreta."),
+                    Some(password),
+                )),
             },
-            Err(e) => Err(HttpResponse::InternalServerError().json(error_construct(
+            Err(e) => Err(Exceptions::internal_server_error(
                 String::from("bcrypt"),
-                String::from("internal server error"),
                 e.to_string(),
-                None,
-                None,
-                None,
-            ))),
+            )),
         }
     }
     pub fn hash(password: &str) -> Result<String, HttpResponse> {
         match bcrypt::hash(password, DEFAULT_COST - 4) {
             Ok(hash) => Ok(hash),
-            Err(e) => Err(HttpResponse::InternalServerError().json(error_construct(
+            Err(e) => Err(Exceptions::internal_server_error(
                 String::from("bcrypt"),
-                String::from("internal server error"),
                 e.to_string(),
-                None,
-                None,
-                None,
-            ))),
+            )),
         }
     }
 }

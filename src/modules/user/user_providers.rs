@@ -1,5 +1,6 @@
-use crate::utils::{
-    error_construct::error_construct, query_constructor_executor::query_constructor_executor,
+use crate::{
+    shared::exceptions::exceptions::Exceptions,
+    utils::query_constructor_executor::query_constructor_executor,
 };
 use actix_web::{web::Data, HttpResponse};
 use deadpool_postgres::Pool;
@@ -16,14 +17,7 @@ pub async fn email_exists(postgres_pool: Data<Pool>, email: String) -> Result<()
     };
 
     if !rows.is_empty() {
-        return Err(HttpResponse::Conflict().json(error_construct(
-            String::from("email"),
-            String::from("conflict"),
-            String::from("Este e-mail já está sendo utilizado por outro usuário."),
-            Some(email),
-            None,
-            None,
-        )));
+        return Err(Exceptions::conflict(email));
     }
     Ok(())
 }
@@ -42,14 +36,11 @@ pub async fn email_not_exists(
     };
 
     if rows.is_empty() {
-        return Err(HttpResponse::NotFound().json(error_construct(
+        return Err(Exceptions::not_found(
             String::from("email"),
-            String::from("not found"),
             String::from("Não foi encontrado um usuário com este e-mail."),
             Some(email),
-            None,
-            None,
-        )));
+        ));
     }
     Ok(())
 }

@@ -1,4 +1,4 @@
-use crate::{shared::structs::jwt_claims::Claims, utils::error_construct::error_construct};
+use crate::shared::{exceptions::exceptions::Exceptions, structs::jwt_claims::Claims};
 use actix_web::HttpResponse;
 use jsonwebtoken::TokenData;
 use std::env;
@@ -19,14 +19,10 @@ impl Jwt {
             &jsonwebtoken::EncodingKey::from_secret(env::var("JWT_REFRESH_KEY").unwrap().as_ref()),
         ) {
             Ok(token) => Ok(token),
-            Err(e) => Err(HttpResponse::InternalServerError().json(error_construct(
+            Err(e) => Err(Exceptions::internal_server_error(
                 String::from("jsonwebtoken"),
-                String::from("internal server error"),
                 e.to_string(),
-                None,
-                None,
-                None,
-            ))),
+            )),
         }
     }
 
@@ -43,14 +39,10 @@ impl Jwt {
             &jsonwebtoken::EncodingKey::from_secret(env::var("JWT_ACCESS_KEY").unwrap().as_ref()),
         ) {
             Ok(token) => Ok(token),
-            Err(e) => Err(HttpResponse::InternalServerError().json(error_construct(
+            Err(e) => Err(Exceptions::internal_server_error(
                 String::from("jsonwebtoken"),
-                String::from("internal server error"),
                 e.to_string(),
-                None,
-                None,
-                None,
-            ))),
+            )),
         }
     }
 
@@ -63,14 +55,11 @@ impl Jwt {
             &jsonwebtoken::Validation::default(),
         ) {
             Ok(token) => Ok(token),
-            Err(e) => Err(HttpResponse::Unauthorized().json(error_construct(
+            Err(e) => Err(Exceptions::unauthorized(
                 String::from("bearer token"),
-                String::from("unauthorized"),
                 e.to_string(),
                 None,
-                None,
-                None,
-            ))),
+            )),
         }
     }
 
@@ -83,14 +72,11 @@ impl Jwt {
             &jsonwebtoken::Validation::default(),
         ) {
             Ok(token) => Ok(token),
-            Err(e) => Err(HttpResponse::Unauthorized().json(error_construct(
+            Err(e) => Err(Exceptions::unauthorized(
                 String::from("bearer token"),
-                String::from("unauthorized"),
                 e.to_string(),
                 None,
-                None,
-                None,
-            ))),
+            )),
         }
     }
 }

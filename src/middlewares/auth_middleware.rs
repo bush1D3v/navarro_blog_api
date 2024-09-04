@@ -1,7 +1,7 @@
 use super::{
     jwt_token_middleware::jwt_token_middleware, uuid_path_middleware::uuid_path_middleware,
 };
-use crate::utils::error_construct::error_construct;
+use crate::shared::exceptions::exceptions::Exceptions;
 use actix_web::{HttpRequest, HttpResponse};
 
 /// Auth middleware.
@@ -55,14 +55,11 @@ pub async fn auth_middleware(
     };
 
     if token.claims.sub != id {
-        return Err(HttpResponse::Unauthorized().json(error_construct(
+        return Err(Exceptions::unauthorized(
             String::from("bearer token"),
-            String::from("unauthorized"),
             String::from("O token informado não pertence ao usuário."),
             None,
-            None,
-            None,
-        )));
+        ));
     }
     Ok(())
 }
