@@ -2936,13 +2936,13 @@ mod integration_specs {
             false,
         )
         .await;
-        assert_eq!(resp.status(), 400);
+        assert_eq!(resp.status(), 422);
 
         let bytes =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
 
         assert!(bytes.contains("Por favor, envie um valor de UUID válido na URL da requisição."));
-        assert!(bytes.contains("bad request"));
+        assert!(bytes.contains("unprocessable entity"));
 
         FunctionalTester::delete_from_database(
             TablesEnum::Users,
@@ -3727,13 +3727,13 @@ mod integration_specs {
         )
         .await;
 
-        assert_eq!(resp.status(), 400);
+        assert_eq!(resp.status(), 422);
 
         let bytes =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
 
         assert!(bytes.contains("Por favor, envie um valor de UUID válido na URL da requisição."));
-        assert!(bytes.contains("bad request"));
+        assert!(bytes.contains("unprocessable entity"));
 
         assert!(
             FunctionalTester::can_see_in_database(
@@ -4504,13 +4504,13 @@ mod integration_specs {
         )
         .await;
 
-        assert_eq!(resp.status(), 400);
+        assert_eq!(resp.status(), 422);
 
         let bytes =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
 
         assert!(bytes.contains("Por favor, envie um valor de UUID válido na URL da requisição."));
-        assert!(bytes.contains("bad request"));
+        assert!(bytes.contains("unprocessable entity"));
 
         assert!(
             FunctionalTester::cant_see_in_database(

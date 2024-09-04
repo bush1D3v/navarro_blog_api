@@ -141,14 +141,14 @@ mod middlewares_specs {
         let resp = uuid_path_middleware(path_value.clone(), path_name)
             .err()
             .unwrap();
-        assert_eq!(resp.status(), 400);
+        assert_eq!(resp.status(), 422);
 
         let bytes =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
 
         assert!(bytes.contains(path_name));
         assert!(bytes.contains("Por favor, envie um valor de UUID válido na URL da requisição."));
-        assert!(bytes.contains("bad request"));
+        assert!(bytes.contains("unprocessable entity"));
     }
 
     /// Test to check if the user is fully authenticated.
@@ -195,14 +195,14 @@ mod middlewares_specs {
 
         let resp = auth_middleware(id, request, path_name).await.err().unwrap();
 
-        assert_eq!(resp.status(), 400);
+        assert_eq!(resp.status(), 422);
 
         let bytes =
             String::from_utf8(body::to_bytes(resp.into_body()).await.unwrap().to_vec()).unwrap();
 
         assert!(bytes.contains(path_name));
         assert!(bytes.contains("Por favor, envie um valor de UUID válido na URL da requisição."));
-        assert!(bytes.contains("bad request"));
+        assert!(bytes.contains("unprocessable entity"));
     }
 
     /// Test to check if the `user_id` is valid, but the user is not authenticated.
