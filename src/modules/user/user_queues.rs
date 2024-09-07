@@ -7,7 +7,18 @@ use deadpool_postgres::Pool;
 use sql_builder::{quote, SqlBuilder};
 use std::{io::ErrorKind, sync::Arc, time::Duration};
 
+/// # Insert User Queue Event
+///
+/// This is the queue event for the insert user queue.
+///
+/// It contains the user_id, body, created_at, and salt.
 type InsertUserQueueEvent = (String, Json<InsertUserDTO>, String, String);
+
+/// # Insert User App Queue
+///
+/// This is the queue for the insert user queue.
+///
+/// It contains the queue event.
 pub type InsertUserAppQueue = deadqueue::unlimited::Queue<InsertUserQueueEvent>;
 
 async fn insert_user_queue(pool: Pool, queue: Arc<InsertUserAppQueue>) -> Result<(), HttpResponse> {
@@ -15,7 +26,7 @@ async fn insert_user_queue(pool: Pool, queue: Arc<InsertUserAppQueue>) -> Result
     let mut user_salt_sql = String::new();
 
     while queue.len() > 0 {
-        let (id, body, created_at, salt) = queue.pop().await;
+        let (user_id, body, created_at, salt) = queue.pop().await;
 
         let mut sql_builder = SqlBuilder::insert_into("users");
         sql_builder
@@ -25,7 +36,7 @@ async fn insert_user_queue(pool: Pool, queue: Arc<InsertUserAppQueue>) -> Result
             .field("password")
             .field("created_at");
         sql_builder.values(&[
-            &quote(&id),
+            &quote(&user_id),
             &quote(&body.name),
             &quote(&body.email),
             &quote(&body.password),
@@ -41,7 +52,7 @@ async fn insert_user_queue(pool: Pool, queue: Arc<InsertUserAppQueue>) -> Result
 
         let mut sql_builder = SqlBuilder::insert_into("salt");
         sql_builder.field("user_id").field("salt");
-        sql_builder.values(&[&quote(&id), &quote(&salt)]);
+        sql_builder.values(&[&quote(&user_id), &quote(&salt)]);
 
         let mut this_sql = match sql_builder.sql() {
             Ok(x) => x,
@@ -96,7 +107,18 @@ pub async fn insert_user_flush_queue(pool_async: Pool, queue_async: Arc<InsertUs
     }
 }
 
+/// # Put User Queue Event
+///
+/// This is the queue event for the put user queue.
+///
+/// It contains the user_id, user_body, and updated_at.
 type PutUserQueueEvent = (String, Json<PutUserDTO>, String);
+
+/// # Put User App Queue
+///
+/// This is the queue for the put user queue.
+///
+/// It contains the queue event.
 pub type PutUserAppQueue = deadqueue::unlimited::Queue<PutUserQueueEvent>;
 
 async fn put_user_queue(pool: Pool, queue: Arc<PutUserAppQueue>) -> Result<(), HttpResponse> {
@@ -161,6 +183,11 @@ pub async fn put_user_flush_queue(pool_async: Pool, queue_async: Arc<PutUserAppQ
     }
 }
 
+/// # Delete User App Queue
+///
+/// This is the queue for the delete user queue.
+///
+/// It contains the user_id.
 pub type DeleteUserAppQueue = deadqueue::unlimited::Queue<String>;
 
 async fn delete_user_queue(pool: Pool, queue: Arc<DeleteUserAppQueue>) -> Result<(), HttpResponse> {
