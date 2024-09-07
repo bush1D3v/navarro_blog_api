@@ -13,6 +13,18 @@ use actix_web::{
 use sql_builder::quote;
 use std::sync::Arc;
 
+/// # User DTO Constructor
+///
+/// This is the user dto constructor.
+///
+/// It contains the rows.
+///
+/// It returns the UserDTO.
+///
+/// # Purpose
+///
+/// This function is used to construct the user dto based on passed rows.
+/// Created by refactor necessary to avoid duplicating code.
 fn user_dto_constructor(rows: Vec<postgres::Row>) -> UserDTO {
     let user_id: uuid::Uuid = rows[0].get("id");
     let created_at: chrono::DateTime<chrono::Utc> = rows[0].get("created_at");
@@ -28,6 +40,19 @@ fn user_dto_constructor(rows: Vec<postgres::Row>) -> UserDTO {
     }
 }
 
+/// # Get User Salt Repository
+///
+/// This is the get user salt repository.
+///
+/// It contains the postgres_pool, user_id and salt.
+///
+/// It returns the salt.
+///
+/// # Errors
+///
+/// This function may return an error if:
+///
+/// - The user salt could not be retrieved from the database.
 pub async fn get_user_salt_repository(
     user_id: String,
     postgres_pool: Data<deadpool_postgres::Pool>,
@@ -52,6 +77,19 @@ pub async fn get_user_salt_repository(
     Ok(salt.to_string())
 }
 
+/// # Insert User Repository
+///
+/// This is the insert user repository.
+///
+/// It contains the queue, body, user_id, and user_salt.
+///
+/// It returns the user.
+///
+/// # Errors
+///
+/// This function may return an error if:
+///
+/// - The user could not be inserted into the database.
 pub async fn insert_user_repository(
     queue: Data<Arc<InsertUserAppQueue>>,
     body: Json<InsertUserDTO>,
@@ -75,6 +113,19 @@ pub async fn insert_user_repository(
     Ok(dto)
 }
 
+/// # Login User Repository
+///
+/// This is the login user repository.
+///
+/// It contains the email, postgres_pool.
+///
+/// It returns the user.
+///
+/// # Errors
+///
+/// This function may return an error if:
+///
+/// - The user could not be retrieved from the database.
 pub async fn login_user_repository(
     email: String,
     postgres_pool: Data<deadpool_postgres::Pool>,
@@ -98,6 +149,19 @@ pub async fn login_user_repository(
     Ok(user_dto_constructor(rows))
 }
 
+/// # Detail User Repository
+///
+/// This is the detail user repository.
+///
+/// It contains the postgres_pool, and user_id.
+///
+/// It returns the user.
+///
+/// # Errors
+///
+/// This function may return an error if:
+///
+/// - The user could not be retrieved from the database.
 pub async fn detail_user_repository(
     postgres_pool: Data<deadpool_postgres::Pool>,
     user_id: String,
@@ -121,6 +185,19 @@ pub async fn detail_user_repository(
     Ok(user_dto_constructor(rows))
 }
 
+/// # List Users Repository
+///
+/// This is the list users repository.
+///
+/// It contains the postgres_pool, and query_params.
+///
+/// It returns the users.
+///
+/// # Errors
+///
+/// This function may return an error if:
+///
+/// - The users could not exist in the database.
 pub async fn list_users_repository(
     postgres_pool: Data<deadpool_postgres::Pool>,
     query_params: Query<QueryParams>,
@@ -178,6 +255,19 @@ pub async fn list_users_repository(
     Ok(users)
 }
 
+/// # Delete User Repository
+///
+/// This is the delete user repository.
+///
+/// It contains the queue, and user_id.
+///
+/// It returns nothing.
+///
+/// # Errors
+///
+/// This function may return an error if:
+///
+/// - The user could not be deleted from the database.
 pub async fn delete_user_repository(
     queue: Data<Arc<DeleteUserAppQueue>>,
     user_id: String,
@@ -187,6 +277,19 @@ pub async fn delete_user_repository(
     Ok(())
 }
 
+/// # Put User Repository
+///
+/// This is the put user repository.
+///
+/// It contains the queue, user, and user_id.
+///
+/// It returns the updated_at.
+///
+/// # Errors
+///
+/// This function may return an error if:
+///
+/// - The user could not be updated in the database.
 pub async fn put_user_repository(
     queue: Data<Arc<PutUserAppQueue>>,
     user: Json<PutUserDTO>,
