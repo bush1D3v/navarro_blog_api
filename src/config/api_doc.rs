@@ -95,6 +95,55 @@ use utoipa_swagger_ui::SwaggerUi;
 /// - The Swagger UI will be available at the endpoint specified in the `SwaggerUi::new` method.
 /// - Make sure to generate the OpenAPI documentation using `utoipa` or a similar crate and provide the correct URL to the OpenAPI JSON file.
 pub fn api_doc() -> SwaggerUi {
+    /// # API Doc Struct
+    ///
+    /// This struct is used to configure and serve the Swagger UI.
+    ///
+    /// ## Purpose
+    ///
+    /// The purpose of this struct is to configure and serve the Swagger UI.
+    ///
+    /// ## Usage
+    ///
+    /// This struct is typically called during the setup of the web server to integrate the Swagger UI into the API service.
+    ///
+    /// ## Returns
+    ///
+    /// This struct returns a `SwaggerUi` instance, which is used by the web server to serve the Swagger UI at a specified endpoint.
+    ///
+    /// ## Example
+    ///
+    /// ```rust
+    /// use utoipa::{
+    ///     openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme},
+    ///     Modify, OpenApi,
+    /// };
+    /// use utoipa_swagger_ui::SwaggerUi;
+    /// use navarro_blog_api::config::api_doc::api_doc;
+    ///
+    /// #[derive(OpenApi)]
+    /// #[openapi(
+    ///    servers(
+    ///        (
+    ///            url = "https://hub.docker.com/repository/docker/bush1d3v/navarro_blog_api",
+    ///            description = "Docker Image",
+    ///        ),
+    ///        (
+    ///            url = "http://localhost:8080/",
+    ///            description = "Local Server",
+    ///        )
+    ///    ),
+    ///    tags((
+    ///        name = "user", description = "Controladores da entidade de usuário"
+    ///    )),
+    /// )]
+    /// pub struct ApiDoc;
+    ///
+    /// pub fn main() {
+    ///     let swagger_ui = ApiDoc::openapi();
+    ///     // Integrate `swagger_ui` with your web server configuration
+    /// }
+    /// ```
     #[derive(OpenApi)]
     #[openapi(
 		paths(user_options, insert_user, login_user, detail_user, list_users, delete_user, put_user, user_id_options),
@@ -129,6 +178,21 @@ pub fn api_doc() -> SwaggerUi {
 	)]
     pub struct ApiDoc;
 
+    /// # Security Modifier
+    ///
+    /// This struct is used to configure and serve the Authentication scheme.
+    ///
+    /// ## Purpose
+    ///
+    /// The purpose of this struct is to configure and serve the Authentication scheme.
+    ///
+    /// ## Usage
+    ///
+    /// This struct is typically called during the setup of the web server to integrate the Swagger UI into the API service.
+    ///
+    /// ## Returns
+    ///
+    /// This struct returns a `SwaggerUi` instance, which is used by the web server to serve the Swagger UI at a specified endpoint.
     struct SecurityModifier;
     impl Modify for SecurityModifier {
         fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
