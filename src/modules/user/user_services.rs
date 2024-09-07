@@ -7,7 +7,7 @@ use super::{
 };
 use crate::{
     shared::{
-        exceptions::exceptions::Exceptions,
+        exceptions::exception::Exception,
         structs::query_params::QueryParams,
         treaties::{
             bcrypt_treated::{Bcrypt, BcryptVerifyData},
@@ -30,8 +30,8 @@ pub async fn insert_user_service(
     mut body: Json<InsertUserDTO>,
     redis_user: String,
 ) -> Result<UserDTO, HttpResponse> {
-    if redis_user != String::from("") {
-        return Err(Exceptions::conflict(body.email.clone()));
+    if redis_user != "" {
+        return Err(Exception::conflict(body.email.clone()));
     }
     match email_exists(postgres_pool, body.email.clone()).await {
         Ok(_) => (),
@@ -66,7 +66,7 @@ pub async fn login_user_service(
     postgres_pool: Data<deadpool_postgres::Pool>,
     redis_user: String,
 ) -> Result<LoginUserServiceResponse, HttpResponse> {
-    if redis_user == String::from("") {
+    if redis_user == "" {
         match email_not_exists(postgres_pool.clone(), body.email.clone()).await {
             Ok(_) => (),
             Err(e) => return Err(e),
@@ -121,7 +121,7 @@ pub async fn detail_user_service(
     user_id: String,
     redis_user: String,
 ) -> Result<UserDTO, HttpResponse> {
-    if redis_user != String::from("") {
+    if redis_user != "" {
         match UserSerdes::serde_string_to_json(&redis_user) {
             Ok(user) => Ok(user),
             Err(e) => Err(e),
@@ -151,7 +151,7 @@ pub async fn delete_user_service(
     user_id: String,
     redis_user: String,
 ) -> Result<String, HttpResponse> {
-    let db_user: UserDTO = if redis_user == String::from("") {
+    let db_user: UserDTO = if redis_user == "" {
         match detail_user_repository(postgres_pool.clone(), user_id.clone()).await {
             Ok(user_dto) => user_dto,
             Err(e) => return Err(e),
@@ -189,8 +189,8 @@ pub async fn put_user_service(
     user_id: String,
     redis_user: String,
 ) -> Result<UserDTO, HttpResponse> {
-    if redis_user != String::from("") {
-        return Err(Exceptions::conflict(body.email.clone()));
+    if redis_user != "" {
+        return Err(Exception::conflict(body.email.clone()));
     }
     match email_exists(postgres_pool.clone(), body.new_email.clone()).await {
         Ok(_) => (),
@@ -203,7 +203,7 @@ pub async fn put_user_service(
     };
 
     if db_user.email != body.email {
-        return Err(Exceptions::forbidden(body.email.clone()));
+        return Err(Exception::forbidden(body.email.clone()));
     }
 
     let salt = match password_verifier(
