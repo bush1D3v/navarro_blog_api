@@ -21,6 +21,17 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use validator::Validate;
 
+/// # User Controllers Module
+///
+/// This module contains all the controllers for the user endpoints.
+///
+/// ## Usage
+///
+/// This module is used to define the routes for the user endpoints.
+///
+/// ## Returns
+///
+/// This function returns a `Scope` instance, which is used by the web server to define the routes for the user endpoints.
 pub fn user_controllers_module() -> actix_web::Scope {
     web::scope("/user")
         .service(user_options)
