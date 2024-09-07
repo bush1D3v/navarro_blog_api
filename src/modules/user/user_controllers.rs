@@ -115,10 +115,9 @@ pub async fn insert_user(
         Ok(_) => (),
         Err(e) => return validate_body_error(e.field_errors()),
     };
-    let redis_user = match Redis::get(&redis_pool, &body.email.clone()).await {
-        Ok(redis_user) => redis_user,
-        Err(_) => String::from(""),
-    };
+    let redis_user = Redis::get(&redis_pool, &body.email.clone())
+        .await
+        .unwrap_or_default();
     match insert_user_service(queue.clone(), postgres_pool, body, redis_user).await {
         Ok(resp) => match UserSerdes::serde_json_to_string(&resp) {
             Ok(redis_user) => {
@@ -232,10 +231,9 @@ pub async fn login_user(
         Ok(_) => (),
         Err(e) => return validate_body_error(e.field_errors()),
     };
-    let redis_user = match Redis::get(&redis_pool, &body.email).await {
-        Ok(redis_user) => redis_user,
-        Err(_) => String::from(""),
-    };
+    let redis_user = Redis::get(&redis_pool, &body.email)
+        .await
+        .unwrap_or_default();
     match login_user_service(body.clone(), postgres_pool, redis_user.clone()).await {
         Ok(service_resp) => {
             login_user_response_constructor(service_resp, &redis_pool, &redis_user, &body.email)
@@ -445,10 +443,7 @@ pub async fn detail_user(
         Ok(_) => (),
         Err(e) => return e,
     };
-    let redis_user = match Redis::get(&redis_pool, &user_id).await {
-        Ok(redis_user) => redis_user,
-        Err(_) => String::from(""),
-    };
+    let redis_user = Redis::get(&redis_pool, &user_id).await.unwrap_or_default();
     match detail_user_service(postgres_pool, user_id.clone(), redis_user).await {
         Ok(user_dto) => match UserSerdes::serde_json_to_string(&user_dto) {
             Ok(redis_user) => {
@@ -568,10 +563,7 @@ pub async fn delete_user(
         Ok(_) => (),
         Err(e) => return validate_body_error(e.field_errors()),
     };
-    let redis_user = match Redis::get(&redis_pool, &user_id).await {
-        Ok(redis_user) => redis_user,
-        Err(_) => String::from(""),
-    };
+    let redis_user = Redis::get(&redis_pool, &user_id).await.unwrap_or_default();
     match delete_user_service(
         postgres_pool,
         queue,
@@ -723,10 +715,9 @@ pub async fn put_user(
         Ok(_) => (),
         Err(e) => return validate_body_error(e.field_errors()),
     };
-    let redis_user = match Redis::get(&redis_pool, &body.new_email).await {
-        Ok(redis_user) => redis_user,
-        Err(_) => String::from(""),
-    };
+    let redis_user = Redis::get(&redis_pool, &body.new_email)
+        .await
+        .unwrap_or_default();
     let service_response = match put_user_service(
         postgres_pool,
         queue,
