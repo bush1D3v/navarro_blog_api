@@ -24,6 +24,21 @@ use actix_web::{
 use std::sync::Arc;
 use utoipa::ToSchema;
 
+/// # Insert User Service
+///
+/// This is the service for the insert user.
+///
+/// It contains the body, postgres_pool, queue and redis_user.
+///
+/// It returns the UserDTO.
+/// # Errors
+///
+/// This function may return an error if:
+///
+/// - The email already exists in the database.
+/// - The password is invalid.
+/// - The password could not be hashed.
+/// - The user could not be inserted in the database.
 pub async fn insert_user_service(
     queue: Data<Arc<InsertUserAppQueue>>,
     postgres_pool: Data<deadpool_postgres::Pool>,
@@ -52,6 +67,11 @@ pub async fn insert_user_service(
     }
 }
 
+/// # Login User Service Response
+///
+/// This is the response for the login user service.
+///
+/// It contains the user, refresh_token, refresh_expires_in, access_token, and access_expires_in.
 #[derive(ToSchema)]
 pub struct LoginUserServiceResponse {
     pub user: UserDTO,
@@ -61,6 +81,20 @@ pub struct LoginUserServiceResponse {
     pub access_expires_in: i64,
 }
 
+/// # Login User Service
+///
+/// This is the service for the login user.
+///
+/// It contains the body, postgres_pool, and redis_user.
+///
+/// It returns the LoginUserServiceResponse.
+///
+/// # Errors
+///
+/// This function may return an error if:
+///
+/// - The email does not exist in the database.
+/// - The password is invalid.
 pub async fn login_user_service(
     body: LoginUserDTO,
     postgres_pool: Data<deadpool_postgres::Pool>,
@@ -116,6 +150,19 @@ pub async fn login_user_service(
     })
 }
 
+/// # Detail User Service
+///
+/// This is the service for the detail user.
+///
+/// It contains the postgres_pool, user_id, and redis_user.
+///
+/// It returns the UserDTO.
+///
+/// # Errors
+///
+/// This function may return an error if:
+///
+/// - The user does not exist in the database.
 pub async fn detail_user_service(
     postgres_pool: Data<deadpool_postgres::Pool>,
     user_id: String,
@@ -134,6 +181,19 @@ pub async fn detail_user_service(
     }
 }
 
+/// # List Users Service
+///
+/// This is the service for the list users.
+///
+/// It contains the postgres_pool, and query_params.
+///
+/// It returns the Vec<DetailUserDTO>.
+///
+/// # Errors
+///
+/// This function may return an error if:
+///
+/// - Does not exist any user in the database.
 pub async fn list_users_service(
     postgres_pool: Data<deadpool_postgres::Pool>,
     query_params: Query<QueryParams>,
@@ -144,6 +204,20 @@ pub async fn list_users_service(
     }
 }
 
+/// # Delete User Service
+///
+/// This is the service for the delete user.
+///
+/// It contains the postgres_pool, queue, user_password, user_id, and redis_user.
+///
+/// It returns the String.
+///
+/// # Errors
+///
+/// This function may return an error if:
+///
+/// - The user does not exist in the database.
+/// - The password is invalid.
 pub async fn delete_user_service(
     postgres_pool: Data<deadpool_postgres::Pool>,
     queue: Data<Arc<DeleteUserAppQueue>>,
@@ -182,6 +256,20 @@ pub async fn delete_user_service(
     }
 }
 
+/// # Put User Service
+///
+/// This is the service for the put user.
+///
+/// It contains the postgres_pool, queue, body, user_id, and redis_user.
+///
+/// It returns the UserDTO.
+///
+/// # Errors
+///
+/// This function may return an error if:
+///
+/// - The user does not exist in the database.
+/// - The password is invalid.
 pub async fn put_user_service(
     postgres_pool: Data<deadpool_postgres::Pool>,
     queue: Data<Arc<PutUserAppQueue>>,
