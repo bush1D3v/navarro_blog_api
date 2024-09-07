@@ -19,6 +19,31 @@ impl Display for CustomError {
     }
 }
 
+/// # Custom Error to IO Error Kind
+///
+/// Converts CustomError to actix_web::HttpResponse
+///
+/// ## Arguments
+///
+/// * `error` - CustomError
+///
+/// ## Returns
+///
+/// HttpResponse
+///
+/// ## Usages
+///
+/// ### PoolError:
+///
+/// Return 503 Error (Service Unavailable) with error message.
+///
+/// ### TokioPostgres:
+///
+/// Return 503 Error (Service Unavailable) with error message.
+///
+/// ### AnyhowError:
+///
+/// Return 500 Error (Internal Server Error) with error message.
 pub fn custom_error_to_io_error_kind(error: CustomError) -> HttpResponse {
     match error {
         CustomError::PoolError(error) => HttpResponse::ServiceUnavailable().json(error_construct(
