@@ -3,7 +3,7 @@ use super::{
     user_queues::{DeleteUserAppQueue, InsertUserAppQueue, PutUserAppQueue},
 };
 use crate::{
-    shared::{exceptions::exceptions::Exceptions, structs::query_params::QueryParams},
+    shared::{exceptions::exception::Exception, structs::query_params::QueryParams},
     utils::query_constructor_executor::query_constructor_executor,
 };
 use actix_web::{
@@ -42,7 +42,7 @@ pub async fn get_user_salt_repository(
     };
 
     if rows.is_empty() {
-        return Err(Exceptions::internal_server_error(
+        return Err(Exception::internal_server_error(
             String::from("server"),
             String::from("Erro inesperado no servidor. Tente novamente mais tarde."),
         ));
@@ -88,7 +88,7 @@ pub async fn login_user_repository(
     };
 
     if rows.is_empty() {
-        return Err(Exceptions::not_found(
+        return Err(Exception::not_found(
             String::from("user"),
             String::from("Não foi encontrado um usuário com este e-mail."),
             Some(email),
@@ -111,7 +111,7 @@ pub async fn detail_user_repository(
     };
 
     if rows.is_empty() {
-        return Err(Exceptions::not_found(
+        return Err(Exception::not_found(
             String::from("user"),
             String::from("Não foi encontrado um usuário com este id."),
             Some(user_id),
@@ -154,7 +154,7 @@ pub async fn list_users_repository(
     };
 
     if rows.is_empty() {
-        return Err(Exceptions::not_found(
+        return Err(Exception::not_found(
             String::from("users"),
             String::from("Não foram encontrados usuários."),
             None,

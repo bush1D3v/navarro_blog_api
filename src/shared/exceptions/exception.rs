@@ -1,9 +1,9 @@
 use crate::utils::error_construct::error_construct;
 use actix_web::HttpResponse;
 
-pub struct Exceptions;
+pub struct Exception;
 
-impl Exceptions {
+impl Exception {
     /// Error 400
     pub fn bad_request(data: String, message: String) -> HttpResponse {
         HttpResponse::BadRequest().json(error_construct(

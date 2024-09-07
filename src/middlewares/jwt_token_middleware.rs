@@ -1,5 +1,5 @@
 use crate::shared::{
-    exceptions::exceptions::Exceptions, structs::jwt_claims::Claims, treaties::jwt_treated::Jwt,
+    exceptions::exception::Exception, structs::jwt_claims::Claims, treaties::jwt_treated::Jwt,
 };
 use actix_web::{http::header::HeaderMap, HttpResponse};
 use jsonwebtoken::TokenData;
@@ -45,14 +45,14 @@ pub fn jwt_token_middleware(headers: &HeaderMap) -> Result<TokenData<Claims>, Ht
                 token_str.trim()
             }
             Err(e) => {
-                return Err(Exceptions::internal_server_error(
+                return Err(Exception::internal_server_error(
                     String::from("bearer token"),
                     e.to_string(),
                 ))
             }
         },
         None => {
-            return Err(Exceptions::bad_request(
+            return Err(Exception::bad_request(
                 String::from("bearer token"),
                 String::from("O valor do cabeçalho 'Authorization' deve ser informado."),
             ))

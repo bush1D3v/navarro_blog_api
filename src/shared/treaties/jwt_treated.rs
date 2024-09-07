@@ -1,4 +1,4 @@
-use crate::shared::{exceptions::exceptions::Exceptions, structs::jwt_claims::Claims};
+use crate::shared::{exceptions::exception::Exception, structs::jwt_claims::Claims};
 use actix_web::HttpResponse;
 use jsonwebtoken::TokenData;
 use std::env;
@@ -19,7 +19,7 @@ impl Jwt {
             &jsonwebtoken::EncodingKey::from_secret(env::var("JWT_REFRESH_KEY").unwrap().as_ref()),
         ) {
             Ok(token) => Ok(token),
-            Err(e) => Err(Exceptions::internal_server_error(
+            Err(e) => Err(Exception::internal_server_error(
                 String::from("jsonwebtoken"),
                 e.to_string(),
             )),
@@ -39,7 +39,7 @@ impl Jwt {
             &jsonwebtoken::EncodingKey::from_secret(env::var("JWT_ACCESS_KEY").unwrap().as_ref()),
         ) {
             Ok(token) => Ok(token),
-            Err(e) => Err(Exceptions::internal_server_error(
+            Err(e) => Err(Exception::internal_server_error(
                 String::from("jsonwebtoken"),
                 e.to_string(),
             )),
@@ -55,7 +55,7 @@ impl Jwt {
             &jsonwebtoken::Validation::default(),
         ) {
             Ok(token) => Ok(token),
-            Err(e) => Err(Exceptions::unauthorized(
+            Err(e) => Err(Exception::unauthorized(
                 String::from("bearer token"),
                 e.to_string(),
                 None,
@@ -72,7 +72,7 @@ impl Jwt {
             &jsonwebtoken::Validation::default(),
         ) {
             Ok(token) => Ok(token),
-            Err(e) => Err(Exceptions::unauthorized(
+            Err(e) => Err(Exception::unauthorized(
                 String::from("bearer token"),
                 e.to_string(),
                 None,

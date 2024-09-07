@@ -1,5 +1,5 @@
 use crate::{
-    shared::exceptions::exceptions::Exceptions,
+    shared::exceptions::exception::Exception,
     utils::query_constructor_executor::query_constructor_executor,
 };
 use actix_web::{web::Data, HttpResponse};
@@ -17,7 +17,7 @@ pub async fn email_exists(postgres_pool: Data<Pool>, email: String) -> Result<()
     };
 
     if !rows.is_empty() {
-        return Err(Exceptions::conflict(email));
+        return Err(Exception::conflict(email));
     }
     Ok(())
 }
@@ -36,7 +36,7 @@ pub async fn email_not_exists(
     };
 
     if rows.is_empty() {
-        return Err(Exceptions::not_found(
+        return Err(Exception::not_found(
             String::from("email"),
             String::from("Não foi encontrado um usuário com este e-mail."),
             Some(email),
