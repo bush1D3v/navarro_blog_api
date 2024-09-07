@@ -30,7 +30,7 @@ pub async fn insert_user_service(
     mut body: Json<InsertUserDTO>,
     redis_user: String,
 ) -> Result<UserDTO, HttpResponse> {
-    if redis_user.is_empty() {
+    if !redis_user.is_empty() {
         return Err(Exception::conflict(body.email.clone()));
     }
     match email_exists(postgres_pool, body.email.clone()).await {
@@ -121,7 +121,7 @@ pub async fn detail_user_service(
     user_id: String,
     redis_user: String,
 ) -> Result<UserDTO, HttpResponse> {
-    if redis_user.is_empty() {
+    if !redis_user.is_empty() {
         match UserSerdes::serde_string_to_json(&redis_user) {
             Ok(user) => Ok(user),
             Err(e) => Err(e),
@@ -189,7 +189,7 @@ pub async fn put_user_service(
     user_id: String,
     redis_user: String,
 ) -> Result<UserDTO, HttpResponse> {
-    if redis_user.is_empty() {
+    if !redis_user.is_empty() {
         return Err(Exception::conflict(body.email.clone()));
     }
     match email_exists(postgres_pool.clone(), body.new_email.clone()).await {
