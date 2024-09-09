@@ -12,7 +12,7 @@ authors = ["Victor Navarro <victor.jose.lopes.navarro@gmail.com>"]
 [dependencies]
 actix-web = "4.9.0"
 actix-cors = "0.7.0"
-anyhow = "1.0.86"
+anyhow = "1.0.87"
 bcrypt = "0.15.1"
 chrono = "0.4.38"
 deadpool-postgres = "0.14.0"
